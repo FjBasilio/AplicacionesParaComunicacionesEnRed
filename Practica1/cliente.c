@@ -22,11 +22,14 @@ int main(){
     
     struct sockaddr_in local=crearLocal();
     struct sockaddr_in remota=crearRemota();
-
+    
     int lbind=crearBind(udp_socket,local);
+
+    printf("\n Puerto local:%.4x",local.sin_port);
+    
     // escribir mensaje a enviar
     enviar(udp_socket,msj,remota);
-
+    
     recibir(udp_socket,remota);//capturar mensaje/respuesta del servidor
     
     
@@ -76,7 +79,7 @@ int crearBind(int socket,struct sockaddr_in dir){
     return lbind;
 }
 void enviar(int socket,unsigned char msj[],struct sockaddr_in dir){
-
+    //printf("\n Remota%.4x",dir.sin_port);
     int tam=sendto(socket,msj,strlen(msj)+1,0,(struct sockaddr *)&dir,sizeof(dir));
     if(tam==-1){
         perror("Error en enviar.");
