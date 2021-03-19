@@ -6,6 +6,12 @@
 #include <netinet/in.h>
 #include <netinet/ip.h> /* superset of previous */
 #include <arpa/inet.h>
+#include <pthread.h>
+
+typedef struct datos_dir{
+        int udp_socket;
+        struct sockaddr_in remota;
+    }*Datos;
 
 int crearSocket();
 struct sockaddr_in crearLocal();
@@ -14,23 +20,54 @@ int crearBind(int socket,struct sockaddr_in dir);
 void recibir(int socket,struct sockaddr_in dir);
 void enviar(int socket,unsigned char msj[],struct sockaddr_in dir);
 
+void* Hilo_Envio(void* datos_void){
+    Datos datos=(Datos)datos_void;
+    unsigned char msj[100];
+    char bfr[100];
+    
+        printf("\nCliente:");
+        scanf("%s",&bfr);
+        strcpy(msj,bfr);
+        enviar(datos->udp_socket,msj,datos->remota);
+    
+}
+
+void* Hilo_Recibe(void* datos_void){
+    Datos datos=(Datos)datos_void;
+    //do{
+        recibir(datos->udp_socket,datos->remota);    
+    //}while(1);
+}
 
 int main(){
-    unsigned char msj[100]="una cadena desde cliente";
     
+    pthread_t hilo_envio,hilo_recibe;
     int udp_socket = crearSocket();
     
     struct sockaddr_in local=crearLocal();
-    struct sockaddr_in remota=crearRemota();
+    struct sockaddr_in remota1=crearRemota();
+    struct sockaddr_in remota2=crearRemota();
     
     int lbind=crearBind(udp_socket,local);
-
-    printf("\n Puerto local:%.4x",local.sin_port);
+    
+    
+    Datos datos_envio=(Datos)malloc(sizeof(struct datos_dir));
+    Datos datos_recibe=(Datos)malloc(sizeof(struct datos_dir));
+    
+    datos_envio->udp_socket=udp_socket;
+    datos_envio->remota=remota1;
+   
+    datos_recibe->udp_socket=udp_socket;
+    datos_recibe->remota=remota2;
     
     // escribir mensaje a enviar
-    enviar(udp_socket,msj,remota);
-    
-    recibir(udp_socket,remota);//capturar mensaje/respuesta del servidor
+    do{
+        pthread_create(&hilo_envio,NULL,&Hilo_Envio,(void*)datos_envio);
+
+        pthread_create(&hilo_recibe,NULL,&Hilo_Recibe,(void*)datos_recibe);
+        
+    }while(pthread_join(hilo_recibe,NULL)==0);
+    pthread_join(hilo_envio,NULL);
     
     
     close(udp_socket);
@@ -86,7 +123,7 @@ void enviar(int socket,unsigned char msj[],struct sockaddr_in dir){
         exit(0);
     }
     else{
-        perror("Exito en enviar.");
+        //perror("Exito en enviar.");
     }
 }
 
@@ -99,6 +136,6 @@ void recibir(int socket,struct sockaddr_in dir){
         exit(0);
     }
     else{
-        printf("\nMensaje:%s",msj_recv);
+        printf("\nMensaje de servidor:%s",msj_recv);
     }
 }

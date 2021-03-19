@@ -1,0 +1,13 @@
+datos_envio->udp_socket=udp_socket;
+    datos_envio->cliente=clientefijo;
+
+    datos_recibe->udp_socket=udp_socket;
+    datos_recibe->cliente=clientefijo;
+    
+    // escribir mensaje a enviar
+    pthread_create(&hilo_envio,NULL,&Hilo_Envio,(void*)datos_envio);
+    //capturar mensaje/respuesta del servidor
+    pthread_create(&hilo_recibe,NULL,&Hilo_Recibe,(void*)datos_recibe);
+
+    pthread_join(hilo_envio,NULL);
+    pthread_join(hilo_recibe,NULL);

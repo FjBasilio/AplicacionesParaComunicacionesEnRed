@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h> /* superset of previous */
 #include <arpa/inet.h>
+#include <pthread.h>
 
 int crearSocket();
 struct sockaddr_in crearServidor();
@@ -15,24 +16,60 @@ int crearBind(int socket,struct sockaddr_in dir);
 struct sockaddr_in  recibir(int socket,struct sockaddr_in dir);
 void enviar(int socket,unsigned char msj[],struct sockaddr_in dir);
 
-//struct sockaddr_in cliente;
+typedef struct datos_dir{
+        int udp_socket;
+        struct sockaddr_in cliente;
+    }*Datos;
+
+void* Hilo_Envio(void* datos_void){
+    Datos datos=(Datos)datos_void;
+    unsigned char msj[100];
+    char bfr[100];
+    //while(1){
+        printf("\nServidor:");
+        scanf("%s",&bfr);
+        strcpy(msj,bfr);
+        enviar(datos->udp_socket,msj,datos->cliente);
+    //}
+}
+
+void* Hilo_Recibe(void* datos_void){
+    Datos datos=(Datos)datos_void;
+    //do{
+        recibir(datos->udp_socket,datos->cliente);
+    //}while(1);
+}
 
 int main(){
-    unsigned char msj[100]="una cadena desde servidor";
-    
+    int bolean_hilo_envio,bolean_hilo_recibe;
+    pthread_t hilo_envio,hilo_recibe;
     int udp_socket = crearSocket();
     
     struct sockaddr_in servidor=crearServidor();
-    struct sockaddr_in cliente=crearCliente();
+    struct sockaddr_in clientevacio=crearCliente(); 
 
+    Datos datos_envio=(Datos)malloc(sizeof(struct datos_dir));
+    Datos datos_recibe=(Datos)malloc(sizeof(struct datos_dir));
     int lbind=crearBind(udp_socket,servidor);
+    struct sockaddr_in clientefijo1=recibir(udp_socket,clientevacio);
+    struct sockaddr_in clientefijo2=clientefijo1;
+    datos_envio->udp_socket=udp_socket;
+    datos_envio->cliente=clientefijo1;
 
-    cliente=recibir(udp_socket,cliente); //capturando mensaje/respuesta del cliente
-    // escribir mensaje/respuesta
+    datos_recibe->udp_socket=udp_socket;
+    datos_recibe->cliente=clientefijo2;
     
-    enviar(udp_socket,msj,cliente);
 
-    //close(udp_socket);
+    // escribir mensaje a enviar
+    do{
+        pthread_create(&hilo_envio,NULL,&Hilo_Envio,(void*)datos_envio);
+
+        pthread_create(&hilo_recibe,NULL,&Hilo_Recibe,(void*)datos_recibe);
+        
+    }while(pthread_join(hilo_recibe,NULL)==0);
+    pthread_join(hilo_envio,NULL);
+
+    close(udp_socket);
     return 0;
 }
 
@@ -88,26 +125,23 @@ struct sockaddr_in recibir(int socket,struct sockaddr_in cli){
         exit(0);
     }
     else{
-        printf("\nMensaje:%s",msj_recv);
-        printf("\nPuerto Cliente:%d",htons(cli.sin_port));
+        printf("\nMensaje de cliente:%s",msj_recv);
+        //printf("\nPuerto Cliente:%d",htons(cli.sin_port));
     }
     return cli;
 }
 
 
 void enviar(int socket,unsigned char msj[],struct sockaddr_in cli){
-    printf("\n%.4x",cli.sin_family);
-    printf("\n%.4x",cli.sin_port);
-    //cliente.sin_family=AF_INET; /* address family: AF_INET */
-    //cliente.sin_port=htons(53);  /* es el puerto por defecto por donde se manda mensaje*/
-    //cliente.sin_addr.s_addr=inet_addr("8.8.8.8");
-
+    //printf("\n%.4x",cli.sin_family);
+    //printf("\n%.4x",cli.sin_port);
+    
     int tam=sendto(socket,msj,strlen(msj)+1,0,(struct sockaddr *)&cli,sizeof(cli));
     if(tam==-1){
         perror("Error en enviar.");
         exit(0);
     }
     else{
-        perror("Exito en enviar.");
+        //perror("Exito en enviar.");
     }
 }
