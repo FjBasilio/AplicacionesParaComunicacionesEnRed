@@ -24,20 +24,22 @@ typedef struct datos_dir{
 void* Hilo_Envio(void* datos_void){
     Datos datos=(Datos)datos_void;
     unsigned char msj[100];
-    char bfr[100];
-    //while(1){
+    
+    while(1){
         printf("\nServidor:");
-        scanf("%s",&bfr);
-        strcpy(msj,bfr);
+        fflush(stdin);
+        fgets(msj,100,stdin);
+        
         enviar(datos->udp_socket,msj,datos->cliente);
-    //}
+    }
 }
 
 void* Hilo_Recibe(void* datos_void){
     Datos datos=(Datos)datos_void;
-    //do{
+    while(1){
         recibir(datos->udp_socket,datos->cliente);
-    //}while(1);
+        fflush(stdout);
+    }
 }
 
 int main(){
@@ -61,13 +63,16 @@ int main(){
     
 
     // escribir mensaje a enviar
-    do{
-        pthread_create(&hilo_envio,NULL,&Hilo_Envio,(void*)datos_envio);
+    
+    if(pthread_create(&hilo_envio,NULL,&Hilo_Envio,(void*)datos_envio)){
+        perror("\nError al crear el hilo\n");
+    }
 
-        pthread_create(&hilo_recibe,NULL,&Hilo_Recibe,(void*)datos_recibe);
+    if(pthread_create(&hilo_recibe,NULL,&Hilo_Recibe,(void*)datos_recibe)){
+        perror("\nError al crear el hilo\n");
+    }
         
-    }while(pthread_join(hilo_recibe,NULL)==0);
-    pthread_join(hilo_envio,NULL);
+    while(1); //ciclo
 
     close(udp_socket);
     return 0;
@@ -126,6 +131,7 @@ struct sockaddr_in recibir(int socket,struct sockaddr_in cli){
     }
     else{
         printf("\nMensaje de cliente:%s",msj_recv);
+        fflush(stdout);
         //printf("\nPuerto Cliente:%d",htons(cli.sin_port));
     }
     return cli;
