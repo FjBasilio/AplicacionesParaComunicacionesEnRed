@@ -61,10 +61,11 @@ void* Hilo_Envio(void* void_direc){
 void* Hilo_Recibe(void* void_direc){
     Direccion direc=(Direccion)void_direc;
 
-    int ban=0;
-    while(ban == 0){
-        ban=recibir(direc); 
-        printf("Tu:");      
+    unsigned char* mensaje="0";
+    while( strcmp(mensaje,"-1") != 0){
+        mensaje=recibir(direc); 
+        printf("\n--->:%s",mensaje);
+        printf("Tu:"); 
         fflush(stdout);
     }
 }

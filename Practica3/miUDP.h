@@ -85,13 +85,13 @@ unsigned char* recibir(Direccion direc){
     int lrecv=recvfrom(socket,msj_recv, 512,0,(struct sockaddr *)&dir_temp,&len_dir);
     if(lrecv==-1){
         printf("\nError al recibir.\n");
-        return htons(-1);
+        return "-1";
     }
     else{
         //Almacenamiento del mensaje para regreasarlo 
         unsigned char* paquete=(unsigned char*)malloc(sizeof(unsigned char)*strlen(msj_recv));
         strcpy(paquete,msj_recv);
-        printf("\n--->:%s",msj_recv);
+        //printf("\n--->:%s",msj_recv);
         *(direc->dir)=dir_temp; // esto es necesario para el servidor, debe de obtener los tatos del remitente
         
         return paquete;
@@ -104,7 +104,7 @@ unsigned char* recibir(Direccion direc){
 // socket, el mensaje y la direccion ip a la que se envia
 // regresa 0 si tuvo exito
 // si hay un error regresa -1
-int enviar(Direccion direc,unsigned char msj[]){
+int enviar(Direccion direc,unsigned char* msj){
 
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;

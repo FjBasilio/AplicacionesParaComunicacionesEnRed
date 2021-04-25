@@ -7,16 +7,19 @@ unsigned char * Struct_DATA(unsigned char * num_block,unsigned char *data);
 unsigned char * Struct_ACK(unsigned char *num_block);
 unsigned char * Struct_ERROR(unsigned char *num_block,unsigned char *error);
 
-int EnviarPeticion(Direccion direc,int opcion);
+int ProcesarEnvioPeticion(int opcion,Direccion dir_envio,Direccion dir_recibe);
 unsigned char* EsperandoPeticiones(Direccion direc);
+int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion  dir_recibe);
 
 unsigned char* ObtenerNombreFile(unsigned char* paq);
+unsigned char* int_to_unchar(int int_num);
+int unchar_to_int(unsigned char* unchar_num);
 
-int EnviaArchivo(unsigned char* name_file,Direccion direc);
-int RecibiendoArchivo(unsigned char* name_file,Direccion direc);
+int EnviaArchivo(unsigned char* name_file,Direccion dir_envio,Direccion  dir_recibe);
+int RecibiendoArchivo(unsigned char* name_file,Direccion dir_envio,Direccion  dir_recibe);
 
 
-//**************************FIN DE LAS ESTRUCTURAS **************************//
+//**************************INICIO DE LAS ESTRUCTURAS **************************//
 
 //Esctructura de Solicitud de lectura
 unsigned char * Struct_RRQ(unsigned char *name_file){
@@ -137,8 +140,8 @@ unsigned char * Struct_ERROR(unsigned char *num_block,unsigned char *error){
 
 
 //************************FUNCIONES PARA PETICIONES**************************//
-
-int EnviarPeticion(Direccion direc,int opcion){
+//Esta funcion es para EL CLIENTE
+int ProcesarEnvioPeticion(int opcion,Direccion dir_envio,Direccion dir_recibe){
     unsigned char name_file[200];
     unsigned char* paq;
 
@@ -152,12 +155,12 @@ int EnviarPeticion(Direccion direc,int opcion){
         scanf("%s",name_file);
 
         paq=Struct_RRQ(name_file);
-        enviar(direc,paq);
+        enviar(dir_envio,paq);
 
         //al enviar la peticion inmediatamente
         //se recibe una respuesta y se procesara
 
-        RecibiendoArchivo(name_file,direc);
+        RecibiendoArchivo(name_file,dir_envio,dir_recibe);
         
 
         break;
@@ -169,13 +172,13 @@ int EnviarPeticion(Direccion direc,int opcion){
         scanf("%s",name_file);
 
         paq=Struct_WRQ(name_file);
-        enviar(direc,paq);
+        enviar(dir_envio,paq);
         
         //al enviar la peticion de escritura se debe esperar 
         //un ACK de confirmacion
 
         //si se recibe un ACK se procede con el envio de archivos
-        EnviaArchivo(name_file,direc);
+        EnviaArchivo(name_file,dir_envio,dir_recibe);
 
         break;
     
@@ -185,6 +188,7 @@ int EnviarPeticion(Direccion direc,int opcion){
 
 }
 
+//Esta funcion es para EL SERVIDOR
 unsigned char* EsperandoPeticiones(Direccion direc){
 
     unsigned char* paquete;
@@ -197,46 +201,43 @@ unsigned char* EsperandoPeticiones(Direccion direc){
         return paquete;
     }
 }
-
-int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion direc){
+//Esta funcion es para EL SERVIDOR
+int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion  dir_recibe){
     //se extrae el codigo de operacion del paquete para saber la peticion
     unsigned char code[2];
 
     memcpy(code,paquete,2);
     //se hace una conversion a int para rpocesar la peticiones en el case
-    int codigo=htons(code);
+    int codigo=unchar_to_int(code);
+
+    //se obtiene el nombre del archivo 
+    //el nombre esta en memoria dinamica
+    unsigned char* name_file=ObtenerNombreFile(paquete);
+
+    unsigned char* ack;
 
     switch (codigo)
     {
     case 1:
         /* code solicitud de lectura*/
 
-
-        //se obtiene el nombre del archivo 
-        //el nombre esta en memoria dinamica
-        unsigned char* name_file=ObtenerNombreFile(paquete);
-
         //mientras no exista algun problema se le mandara
         //el archivo al solicitante
-        EnviaArchivo(name_file,direc);
+        EnviaArchivo(name_file,dir_envio,dir_recibe);
 
 
         break;
     case 2:
         /* code solicitud de escritura*/
 
-        //se obtiene el nombre del archivo 
-        //el nombre esta en memoria dinamica
-        unsigned char* name_file=ObtenerNombreFile(paquete);
-
         //se envia ACK de reconocimiento y de confirmacion
-        unsigned char* ack=Struct_ACK(htons(0));
-        enviar(direc,ack);
+        ack=Struct_ACK(int_to_unchar(0));
+        enviar(dir_envio,ack);
 
 
         //mientras no exista algun problema se le recibira 
         //el archivo del solicitante
-        RecibiendoArchivo(name_file,direc);
+        RecibiendoArchivo(name_file,dir_envio,dir_recibe);
 
 
         break;
@@ -257,7 +258,7 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion direc){
 }
 //**********************FIN DE LAS FUNCIONES PARA PETICIONES***********************//
 
-//***************************FUNCIONES DE SOLICITUDES******************************//
+//***************************FUNCIONES AUXILIARES******************************//
 
 
 unsigned char* ObtenerNombreFile(unsigned char* paq){
@@ -300,12 +301,28 @@ unsigned char* ObtenerNombreFile(unsigned char* paq){
 
 }
 
-//***********************FIN DE LASFUNCIONES DE SOLICITUDES**************************//
+int AlmacenaArchivo(){
+
+}
+//convertira un int a una cadena unsigned char de 2 bytes 
+unsigned char* int_to_unchar(int int_num){
+
+    unsigned char* unchar_num=(unsigned char*)malloc(sizeof(unsigned char)*2);
+
+    return unchar_num;
+}
+//convierte una cadena de unsigned char de 2 bytes a int
+int unchar_to_int(unsigned char* unchar_num){
+    int int_num;
+
+    return int_num;
+}
+//***************************FIN DE FUNCIONES AUXILIARES******************************//
 
 
 //***********************FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS********************//
-//
-int EnviaArchivo(unsigned char* name_file,Direccion direc){
+//*******************Puede ser usada tanto apara el SERVIDOR Y CLIENTE********************//
+int EnviaArchivo(unsigned char* name_file,Direccion dir_envio,Direccion  dir_recibe){
     //indicara cuando el archivo se haya terminado de leer y a su ves enviado
     int terminacion=1;
 
@@ -356,21 +373,24 @@ int EnviaArchivo(unsigned char* name_file,Direccion direc){
     //paquete que se recibe
     unsigned char* paq_entrada;
 
+    //datos que se envian, se llenan con datos del archivo
+    unsigned char* data;
+
     while (terminacion){
         //se arma la estructura DATA conforma leemos el archivo
-        Struct_DATA(htons(blocke),data);
+        paq_salida=Struct_DATA(int_to_unchar(blocke),data);
         //se envia el DATA
-        enviar(direc,paq_salida);
+        enviar(dir_envio,paq_salida);
 
         //se recibe el ACK correspondiente con el numero de bloque
-        paq_entrada=recibir(direc);
+        paq_entrada=recibir(dir_recibe);
     }
     
     
 
 }
 
-int RecibiendoArchivo(unsigned char* name_file,Direccion direc){
+int RecibiendoArchivo(unsigned char* name_file,Direccion dir_envio,Direccion  dir_recibe){
     //indicara cuando el archivo se haya terminado de leer y a su ves enviado
     int terminacion=1;
 
@@ -420,20 +440,20 @@ int RecibiendoArchivo(unsigned char* name_file,Direccion direc){
     int blocke=1;
 
     //paquete que se envia
-    unsigned char paq_salida;
+    unsigned char* paq_salida;
 
     //paquete que se recibe
     unsigned char* paq_entrada;
 
     while (terminacion){
         //se recibe un paquete tipo DATA
-        paq_entrada=recibir(direc);
+        paq_entrada=recibir(dir_recibe);
         
         //se procede a armar el archivo
 
         //Se arma el ACK respetivo al numero de bloque y se envia
-        paq_salida=Struct_ACK(htons(blocke));
-        enviar(direc,paq_salida);
+        paq_salida=Struct_ACK(int_to_unchar(blocke));
+        enviar(dir_envio,paq_salida);
 
         
     }
@@ -442,6 +462,4 @@ int RecibiendoArchivo(unsigned char* name_file,Direccion direc){
     
 }
 
-int AlmacenaArchivo(){
-
-}
+//*********************FIN DE FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS******************//

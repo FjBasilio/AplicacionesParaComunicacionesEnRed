@@ -1,6 +1,6 @@
 #include "miTFTP.h"
 
-int Peticiones(Direccion remota,int opcion);
+int Trabajando(Direccion dir_envio,Direccion  dir_recibe);
 
 int main(){
 
@@ -21,18 +21,19 @@ int main(){
     dir_recibe->udp_socket=udp_socket;
     dir_recibe->dir=remota;
 
-    menu(remota);
+    Trabajando(dir_envio,dir_recibe);
 
 
     return 0;
 }
 
-int Peticiones(Direccion remota,int opcion){
+int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
     int opcion=0;
-    print("Peticion de lectura: 1 \nPeticion de escritura:2");
+    printf("Peticion de lectura: 1 \nPeticion de escritura:2");
     scanf("%d",&opcion);
 
-    EnviarPeticion(remota,opcion);
+    ProcesarEnvioPeticion(opcion,dir_envio,dir_recibe);
 
 }
+
 

@@ -1,6 +1,6 @@
 #include "miTFTP.h"
 
-int Trabajando(Direccion cliente);
+int Trabajando(Direccion dir_envio,Direccion  dir_recibe);
 
 int main(){
 
@@ -20,12 +20,12 @@ int main(){
     dir_recibe->udp_socket=udp_socket;
     dir_recibe->dir=cliente;
 
-    int Trabajando(cliente);
+    Trabajando(dir_envio,dir_recibe);
 
     return 0;
 }
 
-int Trabajando(Direccion cliente){
+int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
     unsigned char* paquete;
 
     //el servidor estara trabajando recibiendo peticiones,
@@ -36,12 +36,12 @@ int Trabajando(Direccion cliente){
     while(1){
         
         //El paquete estara en memoria dinamica
-        paquete=EsperandoPeticiones(cliente);
+        paquete=EsperandoPeticiones(dir_recibe);
 
         //Dependiendo de la peticion la direccion 'cliente'
         //se le manda para que se le mande respuesta por esa direccion
         //en esta seccion puede ir hilos en el caso de atender a mas cliente
-        ProcesarPaqueteRecibido(paquete,cliente);
+        ProcesarPaqueteRecibido(paquete,dir_envio,dir_recibe);
 
     }
 }
