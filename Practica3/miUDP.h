@@ -75,21 +75,26 @@ int crearBind(int socket,struct sockaddr_in *dir){
 // el socked y la direccion ip del origen, 
 // regresa 0 si tuvo exito
 // si hay un error regresa -1
-int recibir(Direccion direc){
+unsigned char* recibir(Direccion direc){
     unsigned char msj_recv[512];  //512 por defecto
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
     int len_dir=sizeof(dir_temp);
+    
 
     int lrecv=recvfrom(socket,msj_recv, 512,0,(struct sockaddr *)&dir_temp,&len_dir);
     if(lrecv==-1){
         printf("\nError al recibir.\n");
-        return -1;
+        return htons(-1);
     }
     else{
+        //Almacenamiento del mensaje para regreasarlo 
+        unsigned char* paquete=(unsigned char*)malloc(sizeof(unsigned char)*strlen(msj_recv));
+        strcpy(paquete,msj_recv);
         printf("\n--->:%s",msj_recv);
         *(direc->dir)=dir_temp; // esto es necesario para el servidor, debe de obtener los tatos del remitente
-        return 0;
+        
+        return paquete;
     }
     
 }
@@ -114,7 +119,7 @@ int enviar(Direccion direc,unsigned char msj[]){
         return -1;
     }
     else{
-        //perror("Exito en enviar.");
+        perror("Exito en enviar.");
         return 0;
     }
 }

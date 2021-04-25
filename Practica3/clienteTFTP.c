@@ -1,5 +1,7 @@
 #include "miTFTP.h"
 
+int Peticiones(Direccion remota,int opcion);
+
 int main(){
 
     //se crea un socket
@@ -19,32 +21,18 @@ int main(){
     dir_recibe->udp_socket=udp_socket;
     dir_recibe->dir=remota;
 
-
+    menu(remota);
 
 
     return 0;
 }
 
-int menu(){
+int Peticiones(Direccion remota,int opcion){
     int opcion=0;
     print("Peticion de lectura: 1 \nPeticion de escritura:2");
     scanf("%d",&opcion);
 
-    switch (opcion)
-    {
-    case 1:
-        /* code peticion de lectura a servidor */
-        break;
-
-    case 2:
-        /* peticion de escritura el servidor */
-        break;
-    
-    default:
-        break;
-    }
-
-
+    EnviarPeticion(remota,opcion);
 
 }
 
