@@ -33,6 +33,7 @@ int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
     //mandar paquetes(peticion de lectura)
     //recibir paquetes(peticion de escritura)
     //mandar mensaje de error(ya sea que no exista o un error distinto)
+    printf("Servidor Listo,Recibiendo paquetes.\n");
     while(1){
         
         //El paquete estara en memoria dinamica
@@ -41,6 +42,7 @@ int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
         //Dependiendo de la peticion la direccion 'cliente'
         //se le manda para que se le mande respuesta por esa direccion
         //en esta seccion puede ir hilos en el caso de atender a mas cliente
+        printf("Se Recibio un paquete, procesando.\n");
         ProcesarPaqueteRecibido(paquete,dir_envio,dir_recibe);
 
     }

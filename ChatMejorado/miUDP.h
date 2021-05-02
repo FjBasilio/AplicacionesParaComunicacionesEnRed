@@ -73,15 +73,15 @@ int crearBind(int socket,struct sockaddr_in *dir){
 // Esta funcion se dedica a recibir paquetes
 // Esta asociado a la Direccion que contiene:
 // el socked y la direccion ip del origen, 
-// regresa 0 si tuvo exito
-// si hay un error regresa -1
+// regresa el paquete recibido
+// si hay un error regresa -1 en unsigned
 unsigned char* recibir(Direccion direc){
     unsigned char msj_recv[512];  //512 por defecto
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
     int len_dir=sizeof(dir_temp);
     
-
+    
     int lrecv=recvfrom(socket,msj_recv, 512,0,(struct sockaddr *)&dir_temp,&len_dir);
     if(lrecv==-1){
         printf("\nError al recibir.\n");
@@ -89,11 +89,10 @@ unsigned char* recibir(Direccion direc){
     }
     else{
         //Almacenamiento del mensaje para regreasarlo 
-        unsigned char* paquete=(unsigned char*)malloc(sizeof(unsigned char)*strlen(msj_recv));
-        strcpy(paquete,msj_recv);
-        //printf("\n--->:%s",msj_recv);
-        *(direc->dir)=dir_temp; // esto es necesario para el servidor, debe de obtener los tatos del remitente
+        unsigned char* paquete=(unsigned char*)malloc(lrecv);
         
+        *(direc->dir)=dir_temp; // esto es necesario para el servidor, debe de obtener los tatos del remitente
+        memcpy(paquete,msj_recv,lrecv); //si se usa printf no funciona bien
         return paquete;
     }
     
@@ -113,13 +112,14 @@ int enviar(Direccion direc,unsigned char* msj){
     //printf("\npuerto salida:%d",ntohs(dir_temp.sin_port));
     //printf("\nip:%s",inet_ntoa(dir_temp.sin_addr));
 
-    int tam=sendto(socket,msj,strlen(msj)+1,0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
+
+    int tam=sendto(socket,msj,strlen(msj),0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
     if(tam==-1){
         printf("\nError en enviar.\n");
         return -1;
     }
     else{
-        perror("Exito en enviar.");
+        //perror("Exito en enviar.");
         return 0;
     }
 }

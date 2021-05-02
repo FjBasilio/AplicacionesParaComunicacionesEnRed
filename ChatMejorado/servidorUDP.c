@@ -17,7 +17,7 @@ int main(){
     Direccion dir_envio=(Direccion)malloc(sizeof(struct datos_dir));
     Direccion dir_recibe=(Direccion)malloc(sizeof(struct datos_dir));
 
-    struct sockaddr_in *local_servidor=crearLocal(8080);
+    struct sockaddr_in *local_servidor=crearLocal(69);
     struct sockaddr_in *cliente=crearCliente(); 
 
     int lbind=crearBind(udp_socket,local_servidor);
@@ -50,11 +50,12 @@ void* Hilo_Envio(void* void_direc){
     int ban=0;
     
     while(ban == 0){
-        printf("\nTu:");
-        fflush(stdout);
-        fgets(msj,100,stdin);
-       
+        
+        printf("\nTus:");
+        fgets(msj,512,stdin);
+        fflush(stdin);
         ban=enviar(direc,msj);
+        
     }
 }
 //funcion que ejecuta el hilo que recibe paquetes
@@ -63,9 +64,11 @@ void* Hilo_Recibe(void* void_direc){
 
     unsigned char* mensaje="0";
     while( strcmp(mensaje,"-1") != 0){
-        mensaje=recibir(direc); 
-        printf("\n--->:%s",mensaje);
-        printf("Tu:"); 
+
         fflush(stdout);
+        mensaje=recibir(direc);
+        fprintf(stdout,"\n--->:%s",mensaje);   
+        printf("Tu:"); 
+        
     }
 }
