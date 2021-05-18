@@ -1,5 +1,11 @@
 #include "miUDP.h"
 
+#define RRQ 1
+#define WRQ 2
+#define DATA 3
+#define ACK 4
+#define ERROR 5
+
 //*****PROTOTIPOS******///
 unsigned char * Struct_RRQ(unsigned char *name_file);
 unsigned char * Struct_WRQ(unsigned char *name_file);
@@ -14,6 +20,7 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
 unsigned char* ObtenerNombreFile(unsigned char* paq);
 unsigned char* ObtenerDatos(unsigned char* paq);
 unsigned char* ObtenerCodigoOp(unsigned char* paq);
+unsigned char* ObtenerBloque(unsigned char* paq);
 unsigned char* int_to_unchar(int int_num);
 int unchar_to_int(unsigned char* unchar_num);
 
@@ -32,18 +39,18 @@ unsigned char * Struct_RRQ(unsigned char *name_file){
     
     //unsigned char= 8 bits = 1 byte
     //unsigned char* code=htons(1);
-    unsigned char code[2]={0x00,0x01};
+    unsigned char code[]={0x00,0x01};
     unsigned char mode[]="octet";
     int ptr=0;
     memcpy(paq+ptr,code,2);
     ptr=ptr+2;
-    memcpy(paq+ptr,name_file,strlen((char*)name_file));
-    ptr=ptr+strlen((char*)name_file);
-    memcpy(paq+ptr,0x00,1);
+    memcpy(paq+ptr,name_file,strlen(name_file));
+    ptr=ptr+strlen(name_file);
+    memcpy(paq+ptr,0x00,0);
     ptr=ptr+1;
-    memcpy(paq+ptr,mode,strlen((char*)mode));
-    ptr=ptr+strlen((char*)mode);
-    memcpy(paq+ptr,0x00,1);
+    memcpy(paq+ptr,mode,strlen(mode));
+    ptr=ptr+strlen(mode);
+    memcpy(paq+ptr,0x00,0);
     ptr=ptr+1; //Tamanio final de la estructura
 
     unsigned char *pack=(unsigned char*)malloc(sizeof(unsigned char)*ptr);
@@ -54,28 +61,46 @@ unsigned char * Struct_RRQ(unsigned char *name_file){
 //Estrcutura de Solicitud de escritura
 unsigned char * Struct_WRQ(unsigned char *name_file){
     unsigned char paq[516];
+    unsigned char* aux=paq;
     for (int i = 0; i < 516; i++){
         paq[i]=0x00;
     }
     
-    //unsigned char= 8 bits = 1 byte
-    unsigned char code[2]={0x00,0x02};
+    unsigned char code[]={0x00,0x02};
     unsigned char mode[]="octet";
-    int ptr=0;
-    memcpy(paq+ptr,code,2);
-    ptr=ptr+2;
-    memcpy(paq+ptr,name_file,strlen((char*)name_file));
-    ptr=ptr+strlen((char*)name_file);
-    memcpy(paq+ptr,0x00,1);
-    ptr=ptr+1;
-    memcpy(paq+ptr,mode,strlen((char*)mode));
-    ptr=ptr+strlen((char*)mode);
-    memcpy(paq+ptr,0x00,1);
-    ptr=ptr+1;
+    unsigned char cero[]={0x00};
 
-    unsigned char *pack=(unsigned char*)malloc(sizeof(unsigned char)*ptr);
-    memcpy(pack,paq,ptr);
-    return pack;
+    int ptr=0; 
+    //printf("ptr:%d\n",ptr);
+    memcpy(aux,code,2);
+
+    ptr=ptr+2;
+    //printf("ptr:%d\n",ptr);
+    
+    memcpy(aux+ptr,name_file,strlen(name_file));
+    ptr=ptr+strlen(name_file);
+    //printf("ptr:%d\n",ptr);
+
+     
+    memcpy(aux+ptr,cero,1);
+    ptr=ptr+1;
+    //printf("ptr:%d\n",ptr);
+
+    memcpy(aux+ptr,mode,strlen(mode));
+    ptr=ptr+strlen(mode);
+    //printf("ptr:%d\n",ptr);
+
+    memcpy(aux+ptr,cero,1);
+    ptr=ptr+1;
+    //printf("ptr:%d\n",ptr);
+    printf("\nTam:%d",strlen(paq));
+    for(int i=0 ;i < ptr; i++){ //mientras que no se detecte el fin de archivo
+            
+            printf("%d=>%c-%x-%d\n",i,paq[i],paq[i],paq[i]);
+    }   
+
+    printf("\nptr:%d",ptr);
+    return paq;
 }
 //Esctructura de Paquete de datos
 unsigned char * Struct_DATA(unsigned char * num_block,unsigned char *data){
@@ -85,7 +110,7 @@ unsigned char * Struct_DATA(unsigned char * num_block,unsigned char *data){
     }
     
     //unsigned char= 8 bits = 1 byte
-    unsigned char code[2]={0x00,0x02};
+    unsigned char code[2]={0x00,0x03};
     int ptr=0;
     memcpy(paq+ptr,code,2);
     ptr=ptr+2;
@@ -105,7 +130,7 @@ unsigned char * Struct_ACK(unsigned char *num_block){
         paq[i]=0x00;
     }
     //unsigned char= 8 bits = 1 byte
-    unsigned char code[2]={0x00,0x02};
+    unsigned char code[2]={0x00,0x04};
     int ptr=0;
     memcpy(paq+ptr,code,2);
     ptr=ptr+2;
@@ -124,14 +149,14 @@ unsigned char * Struct_ERROR(unsigned char *num_block,unsigned char *error){
     }
     
     //unsigned char= 8 bits = 1 byte
-    unsigned char code[2]={0x00,0x02};
+    unsigned char code[2]={0x00,0x05};
     
     int ptr=0;
     memcpy(paq+ptr,code,2);
     ptr=ptr+2;
     memcpy(paq+ptr,num_block,2);
     ptr=ptr+2;
-    memcpy(paq+ptr,0x00,1);
+    memcpy(paq+ptr,0x00,0);
     ptr=ptr+1;
 
     unsigned char *pack=(unsigned char*)malloc(sizeof(unsigned char)*ptr);
@@ -146,30 +171,38 @@ unsigned char * Struct_ERROR(unsigned char *num_block,unsigned char *error){
 int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direccion dir_recibe){
     unsigned char* paq;
     FILE* file;
+    //paquete que se recibe
+    unsigned char* paq_entrada;
 
+    //codigo del paquete que se recibe
+    int code=0;
     switch (opcion)
     {
     case 1:
-        /* code peticion de lectura a DESTINATARIO (cliente recibe archivo) */
-
-        paq=Struct_RRQ(name_file);
-        enviar(dir_envio,paq);
-
-        //al enviar la peticion inmediatamente el servidor
-        //nos responde con el primer blocke
-
+        /* code peticion de lectura a servidor (cliente recibe archivo) */
         //se procede a abrir el archivo en modo escritura
         file=fopen(name_file,"w");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
-            printf("Error al abrir archivo de envio.\n");
+            printf("Error al abrir archivo de escritura.\n");
             //se limpia memoria
+            free(paq_entrada);
             free(paq);
             free(file);
             return -1;
         }
-        //si no hay error se reciben los datos
+        // CLIENTE                                   SERVIDOR
+        //    |   (Se envia la peticion) =>>             |  
+        //    |                                          |
+        //    |                                          |
+        
+
+        //se enviar la peticion inmediatamente el servidor
+        paq=Struct_RRQ(name_file);
+        enviar(dir_envio,paq);
+        printf("\nSe envio Peticion de Lectura");
+        //nos responde con el primer blocke
         RecibiendoArchivo(file,dir_envio,dir_recibe);
         
 
@@ -177,26 +210,50 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
 
     case 2:
         /* peticion de escritura el DESTINATARIO (cliente manda archivo)*/
-
-        paq=Struct_WRQ(name_file);
-        enviar(dir_envio,paq);
-        
-        //al enviar la peticion de escritura se debe esperar 
-        //un ACK de confirmacion
-
-        //si se recibe un ACK se procede con el envio del archivo
         //se procede a abrir el archivo en modo lectura
+        printf("Dentro de peticion=> %s, tamaño:%d\n",name_file,strlen(name_file));
+        
+        
         file=fopen(name_file,"r");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
             printf("Error al abrir archivo de envio.\n");
             //se limpia memoria
+            free(paq_entrada);
             free(paq);
             free(file);
             return -1;
         }
-        //si no hay error se envia
+        // CLIENTE                                   SERVIDOR
+        //    |   (Se envia la peticion) =>>             |  
+        //    |                                          |
+        //    |                                          |
+        //despues de abrir se envia la peticion al servidor
+        paq=Struct_WRQ(name_file);
+        for(int i=0 ;i < strlen(paq); i++){ //mientras que no se detecte el fin de archivo
+            printf("%d=>%c-%x-%d\n",i,paq[i],paq[i],paq[i]);
+        }
+        enviar(dir_envio,paq);
+        
+        printf("\nSe envio Peticion de Escritura");
+        //al enviar la peticion de escritura se debe esperar un ACK de confirmacion
+        paq_entrada=recibir(dir_recibe);
+        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
+        if( code == ACK){
+            //se recibe el ACK correspondiente con el numero de bloque 0
+            printf("\nSe recibe ACK con bloque %d.",unchar_to_int(ObtenerBloque(paq_entrada)));
+        } else if (code == ERROR){
+            //se recibe un paquete de ERROR, por lo tanto,
+            printf("\nSe Recibio un paquete de error.");
+            return -1;
+        } else{
+            //en el caso de un paquete desconocido
+            printf("\nSe recibio un paquete desconocido.");
+            return -1;
+        }
+
+        //si se recibe un ACK se procede con el envio del archivo
         EnviaArchivo(file,dir_envio,dir_recibe);
 
         break;
@@ -205,6 +262,7 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
         return -1;
     }
     //se limpia memoria
+    free(paq_entrada);
     free(paq);
     free(file);
 
@@ -218,7 +276,9 @@ unsigned char* EsperandoPeticiones(Direccion direc){
         //regresara un paquete en memoria dinamica
 
         paquete=recibir(direc);
-
+        for(int i=0 ;i < strlen(paquete); i++){ 
+                printf("%d=>%c-%x-%d\n",i,paquete[i],paquete[i],paquete[i]);
+        } 
         return paquete;
     }
 }
@@ -234,22 +294,20 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
     FILE* file;
     unsigned char* ack;
 
-    //se limpia memoria
-    free(paquete);
-    free(name_file);
-    free(file);
-    free(ack);
+    
+    printf("Codigo:%d",codigo);
 
     switch (codigo)
     {
     case 1:
         /* code solicitud de lectura (sevidor envia archivo)*/ 
+        // CLIENTE                                   SERVIDOR
+        //    |   (Se recibe la peticion) =>>            |  
+        //    |                                          |
+        //    |                                          |
+        printf("\nSe Recibio Peticion de Lectura.");
 
-        //mientras no exista algun problema se le mandara
-        //el archivo al solicitante
-
-        //en el caso de no existir el archivo se envia un 
-        //paquete de ERROR
+        
 
         //se procede a abrir el archivo en modo lectura
         file=fopen(name_file,"r");
@@ -257,6 +315,8 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
         if(file==NULL){
             //en caso de existir un error de hace saber  
             printf("Error al abrir archivo de envio.\n");
+            //si hay un error se envia el mismo
+            enviar(dir_envio,Struct_ERROR(int_to_unchar(0),"El servidor no pudo leer el archivo solicitado"));
             //se limpia memoria
             free(paquete);
             free(name_file);
@@ -264,6 +324,8 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
             free(ack);
             return -1;
         }
+
+
         //si no hay error se envia
         EnviaArchivo(file,dir_envio,dir_recibe);
 
@@ -271,21 +333,22 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
         break;
     case 2:
         /* code solicitud de escritura (servidor recibe archivo)*/
-
-        //se envia ACK de reconocimiento y de confirmacion
-        ack=Struct_ACK(int_to_unchar(0));
-        enviar(dir_envio,ack);
-
-
-        //mientras no exista algun problema se le recibira 
-        //el archivo del solicitante
-
+        // CLIENTE                                   SERVIDOR
+        //    |   (Se recibe la peticion) =>>            |  
+        //    |                                          |
+        //    |                                          |
+        //    |   <<=(Se envia ACK 0)                    | 
+        //    |                                          |
+        //    |                                          |
+        printf("\nSe Recibio Peticion de Escritura.");
         //se procede a abrir el archivo en modo escritura
-        file=fopen(name_file,"r");
+        file=fopen(name_file,"w");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
             printf("Error al abrir archivo de envio.\n");
+            //si hay un error se envia el mismo
+            enviar(dir_envio,Struct_ERROR(int_to_unchar(0),"El servidor no pudo crear el archivo"));
             //se limpia memoria
             free(paquete);
             free(name_file);
@@ -293,6 +356,11 @@ int ProcesarPaqueteRecibido(unsigned char* paquete,Direccion dir_envio,Direccion
             free(ack);
             return -1;
         }
+
+        //se envia ACK de reconocimiento y de confirmacion
+        ack=Struct_ACK(int_to_unchar(0));
+        enviar(dir_envio,ack);
+
         //si no hay error se reciben los datos
         RecibiendoArchivo(file,dir_envio,dir_recibe);
 
@@ -353,6 +421,13 @@ unsigned char* ObtenerCodigoOp(unsigned char* paq){
     return code;
 }
 
+unsigned char* ObtenerBloque(unsigned char* paq){
+
+    unsigned char* code=(unsigned char*)malloc(sizeof(unsigned char)*2);
+    memcpy(code,paq,2);
+    return code;
+}
+
 
 //convertira un int a una cadena unsigned char de 2 bytes 
 unsigned char* int_to_unchar(int int_num){
@@ -370,7 +445,7 @@ int unchar_to_int(unsigned char* unchar_num){
 
     n1=unchar_num[0]<<8;
     n2=(int)unchar_num[1];
-    printf("n1=> %d ,n2=> %d\n\n",n1,n2);
+    // printf("n1=> %d ,n2=> %d\n\n",n1,n2);
     n=n1+n2;
 
     return n;
@@ -385,10 +460,9 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
     //empieza la comunicacion como indica el protocolo TFTP
 
 
+
+    //                                             
     // DESTINATARIO                             REMITENTE
-    //    |   (Se recibe la peticion) =>>            |  ya se recibio (servidor)
-    //    |                                          |
-    //    |                                          |
     //    |   <<=(Se envia DATA blocke 1)            | aqui empieza el while
     //    |                                          |
     //    |                                          |
@@ -434,6 +508,9 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
     //datos que se envian, se llenan con datos del archivo
     unsigned char* data;
 
+    //codigo del paquete que se recibe
+    int code=0;
+
     //almacenamiento del caracter temporal
     unsigned char c;
 
@@ -448,6 +525,7 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
             //printf("=>%c-%x-%d\n",c,c,c);
             
         }
+        printf("\nSe envia bloque:%d.",bloque);
 
         //se arma la estructura DATA despues de leer el archivo
         paq_salida=Struct_DATA(int_to_unchar(bloque++),data);
@@ -455,13 +533,26 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
         //se envia el DATA
         enviar(dir_envio,paq_salida);
 
-        //se recibe el ACK correspondiente con el numero de bloque
+        //se espera un paquete
         paq_entrada=recibir(dir_recibe);
+        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
+        if( code == ACK){
+            //se recibe el ACK correspondiente con el numero de bloque
+            printf("\nSe recibe ACK con bloque %d.",unchar_to_int(ObtenerBloque(paq_entrada)));
+        } else if (code == ERROR){
+            //se recibe un paquete de ERROR, por lo tanto,
+            printf("\nSe Recibio un paquete de error.");
+        } else{
+            //en el caso de un paquete desconocido
+            printf("\nSe recibio un paquete desconocido.");
+        }
+        
 
         //se limpian los apuntadores para evitar traslape de datos
         free(paq_salida);
         free(paq_entrada);
         free(data);
+        
     }
     
     
@@ -475,14 +566,8 @@ unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_r
 
     //empieza la comunicacion como indica el protocolo TFTP
 
-    
-    // DESTINATARIO                             REMITENTE
-    //    |   (Se recibe la peticion) =>>            |  ya se recibio (servidor)
-    //    |                                          |
-    //    |                                          |
-    //    |   <<=(Se envia ACK 0)                    | Ya se envio (servidor)
-    //    |                                          |
-    //    |                                          |
+
+    //  REMITENTE                               DESTINATARIO
     //    |   (Se recibe DATA blocke 1)=>>           |aqui empieza el while
     //    |                                          |
     //    |                                          |
@@ -526,12 +611,28 @@ unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_r
     //paquete que se recibe
     unsigned char* paq_entrada;
 
+    //codigo del paquete que se recibe
+    int code=0;
+
     while (terminacion){
         //se recibe un paquete tipo DATA
-        paq_entrada=recibir(dir_recibe);
-        //se extraen los datos
-        data=ObtenerDatos(paq_entrada);
-        fputs(data,file);
+        paq_entrada=recibir(dir_recibe); 
+        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
+        bloque=unchar_to_int(ObtenerBloque(paq_entrada));
+        if( code == DATA){
+            //se recibe el DATA correspondiente con el numero de bloque
+            //se extraen los datos
+            data=ObtenerDatos(paq_entrada);
+            fputs(data,file);
+            printf("Data:%d = %s",bloque,data);
+        } else if (code == ERROR){
+            //se recibe un paquete de ERROR, por lo tanto,
+            printf("\nSe Recibio un paquete de error.");
+        } else{
+            //en el caso de un paquete desconocido
+            printf("\nSe recibio un paquete desconocido.");
+        }
+        
 
         //Se arma el ACK respetivo al numero de bloque y se envia
         paq_salida=Struct_ACK(int_to_unchar(bloque++));

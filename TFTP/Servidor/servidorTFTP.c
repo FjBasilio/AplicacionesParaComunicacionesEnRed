@@ -1,4 +1,4 @@
-#include "miTFTP.h"
+#include "../Libreria/miTFTP.h"
 
 int Trabajando(Direccion dir_envio,Direccion  dir_recibe);
 
@@ -9,7 +9,7 @@ int main(){
     Direccion dir_envio=(Direccion)malloc(sizeof(struct datos_dir));
     Direccion dir_recibe=(Direccion)malloc(sizeof(struct datos_dir));
 
-    struct sockaddr_in *local_servidor=crearLocal(8080);
+    struct sockaddr_in *local_servidor=crearLocal(69);
     struct sockaddr_in *cliente=crearCliente(); 
 
     int lbind=crearBind(udp_socket,local_servidor);

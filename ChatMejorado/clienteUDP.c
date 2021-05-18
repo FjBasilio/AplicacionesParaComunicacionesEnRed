@@ -18,7 +18,7 @@ int main(){
     Direccion dir_recibe=(Direccion)malloc(sizeof(struct datos_dir));
     
     struct sockaddr_in *local_cliente=crearLocal(0);
-    struct sockaddr_in *remota=crearRemota(69,"192.168.1.150");
+    struct sockaddr_in *remota=crearRemota(8080,"192.168.1.150");
     
     int lbind=crearBind(udp_socket,local_cliente);
     
@@ -50,7 +50,7 @@ void* Hilo_Envio(void* void_direc){
     while(ban >= 0){
         
         
-        printf("\nTus:");
+        printf("\nTu:");
         fgets(msj,512,stdin);
         fflush(stdin);
         ban=enviar(direc,msj);
