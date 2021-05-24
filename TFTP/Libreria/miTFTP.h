@@ -31,24 +31,32 @@ unsigned char* ObtenerMsjErr(TFTP_Struct paq);
 unsigned char* int_to_unchar(int int_num);
 int unchar_to_int(unsigned char* unchar_num);
 
+int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direccion dir_recibe);
+TFTP_Struct EsperandoPeticiones(Direccion direc);
+int ProcesarPaqueteRecibido(TFTP_Struct paquete,Direccion dir_envio,Direccion  dir_recibe);
+
+unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe);
+unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe);
 //***************************FUNCIONES AUXILIARES******************************//
 
 //se dedicara a obtener los nombres de las peticiones recibidas
 unsigned char* ObtenerNombreFile(TFTP_Struct paq){
+    int code=unchar_to_int(ObtenerCodigoOp(paq));
 
-    if (paq->peticion[1]==0x01 || paq->peticion[1]==0x02){
-    
+    if(code==RRQ || code==WRQ){
+        
         unsigned char aux[512];
 
         // se lee el nombre del archivo
-        for(int i = 0;paq->peticion[1]!=0x00;i++){
+        int i;
+        for(i = 0;paq->peticion[i+2]!=0x00;i++){
             aux[i]=paq->peticion[i+2];
+            //fprintf(stdout,"\n[%d]=%c,%d,%x",i+2,aux[i],aux[i],aux[i]);
         }
 
-        unsigned char* name_file=(unsigned char*)malloc( sizeof(unsigned char) * strlen(aux));
+        unsigned char* name_file=(unsigned char*)malloc( sizeof(unsigned char) * i);
         
-        //se retorna el nombre del archivo
-        return strcpy(name_file,aux);
+        return memcpy(name_file,aux,i);
     }else{
         return NULL;
     }
@@ -56,20 +64,23 @@ unsigned char* ObtenerNombreFile(TFTP_Struct paq){
 }
 //Extrae los datos de un paquete
 unsigned char* ObtenerDatos(TFTP_Struct paq){
-    if (paq->peticion[1]==0x03){
+    int code=unchar_to_int(ObtenerCodigoOp(paq));
+    if (code==DATA){
     
         unsigned char aux[512];
         int tam_paq=paq->longitud;
 
         // se lee los datos, empieza a partir de 4 bytes
-        for(int i = 4;i==tam_paq;i++){
-            aux[i-4]=paq->peticion[i];
+        int i;
+        for(i = 0;i<tam_paq-4;i++){
+            aux[i]=paq->peticion[i+4];
+            //fprintf(stdout,"\n[%d]=%c,%d,%x",i+2,aux[i],aux[i],aux[i]);
         }
 
-        unsigned char* datos=(unsigned char*)malloc(sizeof(unsigned char)*512);
+        unsigned char* datos=(unsigned char*)malloc(sizeof(unsigned char)*i);
 
         //se retornan los datos
-        return strcpy(datos,aux);
+        return memcpy(datos,aux,i);
     }else
     {
         return NULL;
@@ -80,14 +91,14 @@ unsigned char* ObtenerDatos(TFTP_Struct paq){
 unsigned char* ObtenerCodigoOp(TFTP_Struct paq){
 
     unsigned char* code=(unsigned char*)malloc(sizeof(unsigned char)*2);
-    memcpy(code,paq->peticion,2);
+    memcpy(code,paq->peticion+0,2);
     //printf("%x %x",code[0],code[1]);
     return code;
 }
 
 unsigned char* ObtenerBloque(TFTP_Struct paq){
-
-    if (paq->peticion[1]==0x03 || paq->peticion[1]==0x04){
+    int code=unchar_to_int(ObtenerCodigoOp(paq));
+    if (code==DATA || code==ACK){
 
         unsigned char* code=(unsigned char*)malloc(sizeof(unsigned char)*2);
         memcpy(code,paq->peticion+2,2);
@@ -99,7 +110,8 @@ unsigned char* ObtenerBloque(TFTP_Struct paq){
     
 }
 unsigned char* ObtenerCodigoErr(TFTP_Struct paq){
-    if (paq->peticion[1]==0x05){
+    int code=unchar_to_int(ObtenerCodigoOp(paq));
+    if (code==ERROR){
 
         unsigned char* code=(unsigned char*)malloc(sizeof(unsigned char)*2);
         memcpy(code,paq->peticion+2,2);
@@ -111,19 +123,21 @@ unsigned char* ObtenerCodigoErr(TFTP_Struct paq){
 
 }
 unsigned char* ObtenerMsjErr(TFTP_Struct paq){
-    if (paq->peticion[1]==0x05){
+    int code=unchar_to_int(ObtenerCodigoOp(paq));
+    if (code==ERROR){
         unsigned char aux[512];
-        int tam_paq=(paq->longitud)-1;//recordar el caracter 0x00 al final
 
         // se lee los datos, empieza a partir de 4 bytes
-        for(int i = 4;i==tam_paq;i++){
-            aux[i-4]=paq->peticion[i];
+        int i;
+        for(i = 0;paq->peticion[i+4]!=0x00;i++){
+            aux[i]=paq->peticion[i+4];
+            //fprintf(stdout,"\n[%d]=%c,%d,%x",i+2,aux[i],aux[i],aux[i]);
         }
 
-        unsigned char* mjs_error=(unsigned char*)malloc(sizeof(unsigned char)*512);
+        unsigned char* mjs_error=(unsigned char*)malloc(sizeof(unsigned char)*i);
 
         //se retornan los datos
-        return strcpy(mjs_error,aux);
+        return memcpy(mjs_error,aux,i);
         
     }else
     {
@@ -155,215 +169,17 @@ int unchar_to_int(unsigned char* unchar_num){
 }
 //***************************FIN DE FUNCIONES AUXILIARES******************************//
 
-
-//***********************FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS********************//
-//*******************Puede ser usada tanto apara el SERVIDOR Y CLIENTE********************//
-unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe){
-    
-    //empieza la comunicacion como indica el protocolo TFTP
-
-
-
-    //                                             
-    // DESTINATARIO                             REMITENTE
-    //    |   <<=(Se envia DATA blocke 1)            | aqui empieza el while
-    //    |                                          |
-    //    |                                          |
-    //    |    (Se recibe ACK 1) =>>                 |
-    //    |                                          |
-    //    |                                          |
-    //    |   <<=(Se envia DATA blocke 2)            |
-    //    |                                          |
-    //    |                                          |
-    //    |    (Se recibe ACK 2) =>>                 |
-    //    |                                          |
-    //    |                                          |
-    //    |   <<=(Se envia DATA blocke 3)            |
-    //    |                                          |
-    //    |                                          |
-    //    |    (Se recibe ACK 3) =>>                 |
-    //    |                                          |
-    //    |                                          |
-    //    |   <<=(Se envia DATA blocke 4)            |
-    //    |                                          |
-    //    |                                          |
-    //    |    (Se recibe ACK 4) =>>                 |
-    //    |                                          |
-    //    |                                          |
-    //    |   <<=(Se envia DATA blocke n)            |
-    //    |                                          |
-    //    |                                          |
-    //    |    (Se recibe ACK n) =>>                 |aqui se rompe el while
-    //    |                                          |
-    //    |                                          |
-    //indicara cuando el archivo se haya terminado de leer y a su ves enviado
-    int terminacion=1;
-
-    //numero bloque
-    int bloque=1;
-
-    //paquete que se envia
-    TFTP_Struct paq_salida;
-
-    //paquete que se recibe
-    TFTP_Struct paq_entrada;
-
-    //datos que se envian, se llenan con datos del archivo
-    unsigned char* data;
-
-    //codigo del paquete que se recibe
-    int code=0;
-
-    //almacenamiento del caracter temporal
-    unsigned char c;
-
-    while (terminacion){
-        data=(unsigned char*)malloc(sizeof(unsigned char)*512);
-
-        //La escritura de hace despues de los 4 bytes que ya se ocuparon hasta 512
-        for(int i=4 ;(feof(file) == 0) && (i<512); i++){ //mientras que no se detecte el fin de archivo
-
-            c=fgetc(file); //se toma los caracteres en orden
-            data[i]=c;
-            //printf("=>%c-%x-%d\n",c,c,c);
-            
-        }
-        printf("\nSe envia bloque:%d.",bloque);
-
-        //se arma la estructura DATA despues de leer el archivo
-        paq_salida=Struct_DATA(int_to_unchar(bloque++),data);
-        
-        //se envia el DATA
-        enviar(dir_envio,paq_salida);
-
-        //se espera un paquete
-        paq_entrada=recibir(dir_recibe);
-        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
-        if( code == ACK){
-            //se recibe el ACK correspondiente con el numero de bloque
-            printf("\nSe recibe ACK con bloque %d.",unchar_to_int(ObtenerBloque(paq_entrada)));
-        } else if (code == ERROR){
-            //se recibe un paquete de ERROR, por lo tanto,
-            printf("\nSe Recibio un paquete de error.");
-        } else{
-            //en el caso de un paquete desconocido
-            printf("\nSe recibio un paquete desconocido.");
-        }
-        
-
-        //se limpian los apuntadores para evitar traslape de datos
-        free(paq_salida);
-        free(paq_entrada);
-        free(data);
-        
-    }
-    
-    
-
-}
-
-unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe){
-    //indicara cuando el archivo se haya terminado de leer y a su ves enviado
-    int terminacion=1;
-
-
-    //empieza la comunicacion como indica el protocolo TFTP
-
-
-    //  REMITENTE                               DESTINATARIO
-    //    |   (Se recibe DATA blocke 1)=>>           |aqui empieza el while
-    //    |                                          |
-    //    |                                          |
-    //    |    <<=(Se envia ACK 1)                   |
-    //    |                                          |
-    //    |                                          |
-    //    |   (Se recibe DATA blocke 2)=>>           |
-    //    |                                          |
-    //    |                                          |
-    //    |    <<=(Se envia ACK 2)                   |
-    //    |                                          |
-    //    |                                          |
-    //    |   (Se recibe DATA blocke 3)=>>           |
-    //    |                                          |
-    //    |                                          |
-    //    |    <<=(Se envia ACK 3)                   |
-    //    |                                          |
-    //    |                                          |
-    //    |   (Se recibe DATA blocke 4)=>>           |
-    //    |                                          |
-    //    |                                          |
-    //    |    <<=(Se envia ACK 4)                   |
-    //    |                                          |
-    //    |                                          |
-    //    |   (Se recibe DATA blocke n)=>>           |
-    //    |                                          |
-    //    |                                          |
-    //    |    <<=(Se envia ACK n)                   |
-    //    |                                          |
-    //    |                                          |
-    
-    //numero bloque
-    int bloque=1;
-
-    //paquete que se envia
-    TFTP_Struct paq_salida;
-
-    //datos extraidos del paquete recibido
-    unsigned char* data;
-
-    //paquete que se recibe
-    TFTP_Struct paq_entrada;
-
-    //codigo del paquete que se recibe
-    int code=0;
-
-    while (terminacion){
-        //se recibe un paquete tipo DATA
-        paq_entrada=recibir(dir_recibe); 
-        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
-        bloque=unchar_to_int(ObtenerBloque(paq_entrada));
-        if( code == DATA){
-            //se recibe el DATA correspondiente con el numero de bloque
-            //se extraen los datos
-            data=ObtenerDatos(paq_entrada);
-            fputs(data,file);
-            printf("Data:%d = %s",bloque,data);
-        } else if (code == ERROR){
-            //se recibe un paquete de ERROR, por lo tanto,
-            printf("\nSe Recibio un paquete de error.");
-        } else{
-            //en el caso de un paquete desconocido
-            printf("\nSe recibio un paquete desconocido.");
-        }
-        
-
-        //Se arma el ACK respetivo al numero de bloque y se envia
-        paq_salida=Struct_ACK(int_to_unchar(bloque++));
-        enviar(dir_envio,paq_salida);
-
-        free(paq_salida);
-        free(paq_entrada);
-        free(data);
-    }
-
-    
-    
-}
-
-//*********************FIN DE FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS******************//
-
 //************************FUNCIONES PARA PETICIONES**************************//
 //Esta funcion es para EL CLIENTE
 int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direccion dir_recibe){
     TFTP_Struct paquete;
     FILE* file;
-    //paquete que se recibe
+    //paquete que se va a recibir despues de enviar peticion
     TFTP_Struct paq_entrada;
 
     //codigo del paquete que se recibe
     int code=0;
-    switch (opcion)
-    {
+    switch (opcion){
     case 1:
         /* code peticion de lectura a servidor (cliente recibe archivo) */
         //se procede a abrir el archivo en modo escritura
@@ -386,8 +202,15 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
 
         //se enviar la peticion inmediatamente el servidor
         paquete=Struct_RRQ(name_file);
-        enviar(dir_envio,paquete);
-        printf("\nSe envio Peticion de Lectura");
+       
+        if (enviar(dir_envio,paquete)==-1)
+        {
+            perror("Error al enviar paquete con peticion de lectura");
+        }
+        else
+        {
+            printf("\nSe envio Peticion de Lectura");
+        }
         //nos responde con el primer blocke
         RecibiendoArchivo(file,dir_envio,dir_recibe);
         
@@ -397,9 +220,6 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
     case 2:
         /* peticion de escritura el DESTINATARIO (cliente manda archivo)*/
         //se procede a abrir el archivo en modo lectura
-        printf("Dentro de peticion=> %s, tamaño:%d\n",name_file,strlen(name_file));
-        
-        
         file=fopen(name_file,"r");
 
         if(file==NULL){
@@ -417,11 +237,19 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
         //    |                                          |
         //despues de abrir se envia la peticion al servidor
         paquete=Struct_WRQ(name_file);
-        enviar(dir_envio,paquete);
+        printf("bandera");
+        if (enviar(dir_envio,paquete)==-1)
+        {
+            perror("Error al enviar paquete con peticion de Escritura");
+        }
+        else
+        {
+            printf("\nSe envio Peticion de Escritura");
+        }
         
-        printf("\nSe envio Peticion de Escritura");
         //al enviar la peticion de escritura se debe esperar un ACK de confirmacion
         paq_entrada=recibir(dir_recibe);
+        getchar();
         code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
         if( code == ACK){
             //se recibe el ACK correspondiente con el numero de bloque 0
@@ -435,7 +263,7 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
             printf("\nSe recibio un paquete desconocido.");
             return -1;
         }
-
+        getchar();
         //si se recibe un ACK se procede con el envio del archivo
         EnviaArchivo(file,dir_envio,dir_recibe);
 
@@ -459,7 +287,7 @@ TFTP_Struct EsperandoPeticiones(Direccion direc){
         //regresara un paquete en memoria dinamica
 
         paquete=recibir(direc);
-        
+        MostrarTFTP_Struct(paquete);
         return paquete;
     }
 }
@@ -540,8 +368,10 @@ int ProcesarPaqueteRecibido(TFTP_Struct paquete,Direccion dir_envio,Direccion  d
 
         //se envia ACK de reconocimiento y de confirmacion
         ack=Struct_ACK(int_to_unchar(0));
+        printf("\nse envio ack de confirmacion armado");
+        MostrarTFTP_Struct(ack);
         enviar(dir_envio,ack);
-
+        printf("\nse envio ack de confirmacion");
         //si no hay error se reciben los datos
         RecibiendoArchivo(file,dir_envio,dir_recibe);
 
@@ -559,3 +389,215 @@ int ProcesarPaqueteRecibido(TFTP_Struct paquete,Direccion dir_envio,Direccion  d
 
 }
 //**********************FIN DE LAS FUNCIONES PARA PETICIONES***********************//
+
+//***********************FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS********************//
+//*******************Puede ser usada tanto apara el SERVIDOR Y CLIENTE********************//
+unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe){
+    
+    //empieza la comunicacion como indica el protocolo TFTP
+
+    //                                             
+    // DESTINATARIO                             REMITENTE
+    //    |   <<=(Se envia DATA blocke 1)            | aqui empieza el while
+    //    |                                          |
+    //    |                                          |
+    //    |    (Se recibe ACK 1) =>>                 |
+    //    |                                          |
+    //    |                                          |
+    //    |   <<=(Se envia DATA blocke 2)            |
+    //    |                                          |
+    //    |                                          |
+    //    |    (Se recibe ACK 2) =>>                 |
+    //    |                                          |
+    //    |                                          |
+    //    |   <<=(Se envia DATA blocke 3)            |
+    //    |                                          |
+    //    |                                          |
+    //    |    (Se recibe ACK 3) =>>                 |
+    //    |                                          |
+    //    |                                          |
+    //    |   <<=(Se envia DATA blocke 4)            |
+    //    |                                          |
+    //    |                                          |
+    //    |    (Se recibe ACK 4) =>>                 |
+    //    |                                          |
+    //    |                                          |
+    //    |   <<=(Se envia DATA blocke n)            |
+    //    |                                          |
+    //    |                                          |
+    //    |    (Se recibe ACK n) =>>                 |aqui se rompe el while
+    //    |                                          |
+    //    |                                          |
+
+    //numero bloque
+    int bloque=1;
+
+    //paquete que se envia
+    TFTP_Struct paq_salida;
+
+    //paquete que se recibe
+    TFTP_Struct paq_entrada;
+
+    //datos que se envian, se llenan con datos del archivo
+    unsigned char* data;
+
+    //codigo del paquete que se recibe
+    int code=0;
+
+    //almacenamiento del caracter temporal
+    unsigned char c;
+
+    while (1){
+        data=(unsigned char*)malloc(sizeof(unsigned char)*512);
+
+        //La escritura de hace despues de los 4 bytes que ya se ocuparon hasta 512
+        for(int i=4 ;(feof(file) == 0) && (i<512); i++){ //mientras que no se detecte el fin de archivo
+
+            c=fgetc(file); //se toma los caracteres en orden
+            data[i]=c;
+            //printf("=>%c-%x-%d\n",c,c,c);
+            
+        }
+        printf("\nSe envia bloque:%d.",bloque);
+
+        //se arma la estructura DATA despues de leer el archivo
+        paq_salida=Struct_DATA(int_to_unchar(bloque),data);
+        bloque++;
+        //se envia el DATA
+        if(enviar(dir_envio,paq_salida)==-1)
+        {
+            perror("Error al enviar data");
+        }
+        else
+        {
+            printf("\nSe envio data");
+        }
+        
+
+        //se espera un paquete
+        paq_entrada=recibir(dir_recibe);
+        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
+        if( code == ACK){
+            //se recibe el ACK correspondiente con el numero de bloque
+            printf("\nSe recibe ACK con bloque %d.",unchar_to_int(ObtenerBloque(paq_entrada)));
+        } else if (code == ERROR){
+            //se recibe un paquete de ERROR, por lo tanto,
+            printf("\nSe Recibio un paquete de error.");
+        } else{
+            //en el caso de un paquete desconocido
+            printf("\nSe recibio un paquete desconocido.");
+        }
+
+        if (paq_salida->longitud<512)
+        {
+            //se limpian los apuntadores para evitar traslape de datos
+            free(paq_salida);
+            free(paq_entrada);
+            free(data);
+            break;
+        }
+        
+        
+
+        //se limpian los apuntadores para evitar traslape de datos
+        free(paq_salida);
+        free(paq_entrada);
+        free(data);
+        
+    }
+    
+    
+
+}
+
+unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe){
+    //empieza la comunicacion como indica el protocolo TFTP
+
+
+    //  REMITENTE                               DESTINATARIO
+    //    |   (Se recibe DATA blocke 1)=>>           |aqui empieza el while
+    //    |                                          |
+    //    |                                          |
+    //    |    <<=(Se envia ACK 1)                   |
+    //    |                                          |
+    //    |                                          |
+    //    |   (Se recibe DATA blocke 2)=>>           |
+    //    |                                          |
+    //    |                                          |
+    //    |    <<=(Se envia ACK 2)                   |
+    //    |                                          |
+    //    |                                          |
+    //    |   (Se recibe DATA blocke 3)=>>           |
+    //    |                                          |
+    //    |                                          |
+    //    |    <<=(Se envia ACK 3)                   |
+    //    |                                          |
+    //    |                                          |
+    //    |   (Se recibe DATA blocke 4)=>>           |
+    //    |                                          |
+    //    |                                          |
+    //    |    <<=(Se envia ACK 4)                   |
+    //    |                                          |
+    //    |                                          |
+    //    |   (Se recibe DATA blocke n)=>>           |
+    //    |                                          |
+    //    |                                          |
+    //    |    <<=(Se envia ACK n)                   |
+    //    |                                          |
+    //    |                                          |
+    
+    //numero bloque
+    unsigned char* bloque;
+
+    //paquete que se envia
+    TFTP_Struct paq_salida;
+
+    //datos extraidos del paquete recibido
+    unsigned char* data;
+
+    //paquete que se recibe
+    TFTP_Struct paq_entrada;
+
+    //codigo del paquete que se recibe
+    int code=0;
+
+    while (1){
+        //se recibe un paquete tipo DATA
+        paq_entrada=recibir(dir_recibe); 
+        code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
+        bloque=ObtenerBloque(paq_entrada);
+        if( code == DATA){
+            //se recibe el DATA correspondiente con el numero de bloque
+            //se extraen los datos
+            data=ObtenerDatos(paq_entrada);
+            //se debe de escribir en el archivo--pendiente
+            printf("dato:%s",data);
+            printf("Data:%hhn = %s",bloque,data);
+            //Se arma el ACK respetivo al numero de bloque y se envia
+            paq_salida=Struct_ACK(bloque);
+            enviar(dir_envio,paq_salida);
+            if (paq_entrada->longitud<512){
+                free(paq_salida);
+                free(paq_entrada);
+                free(data);
+                break;
+            }
+            
+        } else if (code == ERROR){
+            //se recibe un paquete de ERROR, por lo tanto,
+            printf("\nSe Recibio un paquete de error.");
+        } else{
+            //en el caso de un paquete desconocido
+            printf("\nSe recibio un paquete desconocido.");
+        }
+
+        free(paq_salida);
+        free(paq_entrada);
+        free(data);
+    }
+
+    
+    
+}
+
+//*********************FIN DE FUNCIONES DE ENVIO Y RECIBIMIENTO DE ARCHIVOS******************//

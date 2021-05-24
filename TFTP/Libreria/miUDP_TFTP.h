@@ -35,7 +35,7 @@ int MostrarTFTP_Struct(TFTP_Struct paq){
     {
         fprintf(stdout,"\n[%d]=%c,%d,%x",i,paq->peticion[i],paq->peticion[i],paq->peticion[i]);
     }
-    
+    //printf("fin");
 }
 //**************************INICIO DE LAS ESTRUCTURAS **************************//
 
@@ -50,6 +50,7 @@ TFTP_Struct Struct_RRQ(unsigned char *name_file){
     unsigned char paq[516];
 
     unsigned char code[]={0x00,0x01};
+    unsigned char cero[]={0x00};
     unsigned char mode[]="octet";
 
     int ptr=0;
@@ -59,13 +60,13 @@ TFTP_Struct Struct_RRQ(unsigned char *name_file){
     memcpy(paq+ptr,name_file,strlen(name_file));
     ptr=ptr+strlen(name_file);
 
-    memcpy(paq+ptr,0x00,0);
+    memcpy(paq+ptr,cero,1);
     ptr=ptr+1;
 
     memcpy(paq+ptr,mode,strlen(mode));
     ptr=ptr+strlen(mode);
 
-    memcpy(paq+ptr,0x00,0);
+    memcpy(paq+ptr,cero,1);
     ptr=ptr+1;
 
 
@@ -255,13 +256,9 @@ int enviar(Direccion direc,TFTP_Struct paq){
 
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
-
-    //pruebas
-    //printf("\npuerto salida:%d",ntohs(dir_temp.sin_port));
-    //printf("\nip:%s",inet_ntoa(dir_temp.sin_addr));
-
-
+    
     int tam=sendto(socket,paq->peticion,paq->longitud,0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
+    
     if(tam==-1){
         printf("\nError en enviar.\n");
         return -1;

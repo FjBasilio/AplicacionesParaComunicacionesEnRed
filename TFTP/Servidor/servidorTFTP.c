@@ -26,7 +26,7 @@ int main(){
 }
 
 int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
-    unsigned char* paquete;
+    TFTP_Struct paquete;
 
     //el servidor estara trabajando recibiendo peticiones,
     //cuando reciba una pedende de lo que sea se pondra a

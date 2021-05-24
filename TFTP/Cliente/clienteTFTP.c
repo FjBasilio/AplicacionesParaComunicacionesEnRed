@@ -11,7 +11,7 @@ int main(){
     Direccion dir_recibe=(Direccion)malloc(sizeof(struct datos_dir));
     
     struct sockaddr_in *local_cliente=crearLocal(0);
-    struct sockaddr_in *remota=crearRemota(69,"192.168.1.150");
+    struct sockaddr_in *remota=crearRemota(69,"192.168.1.118");
     
     int lbind=crearBind(udp_socket,local_cliente);
     
@@ -36,7 +36,7 @@ int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
     printf("Escriba el nombre del archivo: ");
     scanf("%s",name_file);
     
-    printf("=> %s, tamaño:%d\n",name_file,strlen(name_file));
+    //printf("=> %s, tamaño:%ld\n",name_file,strlen(name_file));
 
     printf("Se envio la peticion.\n");
     EnviarPeticion(opcion,name_file,dir_envio,dir_recibe);
