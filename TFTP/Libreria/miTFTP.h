@@ -183,7 +183,7 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
     case 1:
         /* code peticion de lectura a servidor (cliente recibe archivo) */
         //se procede a abrir el archivo en modo escritura
-        file=fopen(name_file,"w");
+        file=fopen(name_file,"wb");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
@@ -220,7 +220,7 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
     case 2:
         /* peticion de escritura el DESTINATARIO (cliente manda archivo)*/
         //se procede a abrir el archivo en modo lectura
-        file=fopen(name_file,"r");
+        file=fopen(name_file,"rb");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
@@ -263,7 +263,7 @@ int EnviarPeticion(int opcion,unsigned char* name_file,Direccion dir_envio,Direc
             printf("\nSe recibio un paquete desconocido.");
             return -1;
         }
-        getchar();
+        //getchar();
         //si se recibe un ACK se procede con el envio del archivo
         EnviaArchivo(file,dir_envio,dir_recibe);
 
@@ -319,7 +319,7 @@ int ProcesarPaqueteRecibido(TFTP_Struct paquete,Direccion dir_envio,Direccion  d
         
 
         //se procede a abrir el archivo en modo lectura
-        file=fopen(name_file,"r");
+        file=fopen(name_file,"rb");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
@@ -351,7 +351,7 @@ int ProcesarPaqueteRecibido(TFTP_Struct paquete,Direccion dir_envio,Direccion  d
         //    |                                          |
         printf("\nSe Recibio Peticion de Escritura.");
         //se procede a abrir el archivo en modo escritura
-        file=fopen(name_file,"w");
+        file=fopen(name_file,"wb");
 
         if(file==NULL){
             //en caso de existir un error de hace saber  
@@ -441,6 +441,9 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
     //datos que se envian, se llenan con datos del archivo
     unsigned char* data;
 
+    //cantidad de bytes leidos del archivo
+    int cantidad=0;
+
     //codigo del paquete que se recibe
     int code=0;
 
@@ -450,27 +453,24 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
     while (1){
         data=(unsigned char*)malloc(sizeof(unsigned char)*512);
 
-        //La escritura de hace despues de los 4 bytes que ya se ocuparon hasta 512
-        for(int i=4 ;(feof(file) == 0) && (i<512); i++){ //mientras que no se detecte el fin de archivo
+        //La escritura de hace despues de los 4 bytes 
+        //ahora se leen 512 provenientes del archivo
+           
+        cantidad=fread(data,1,512,file);
 
-            c=fgetc(file); //se toma los caracteres en orden
-            data[i]=c;
-            //printf("=>%c-%x-%d\n",c,c,c);
-            
-        }
         printf("\nSe envia bloque:%d.",bloque);
 
         //se arma la estructura DATA despues de leer el archivo
         paq_salida=Struct_DATA(int_to_unchar(bloque),data);
         bloque++;
         //se envia el DATA
-        if(enviar(dir_envio,paq_salida)==-1)
-        {
+        if(enviar(dir_envio,paq_salida)==-1){
             perror("Error al enviar data");
+            break;
         }
-        else
-        {
+        else{
             printf("\nSe envio data");
+            break;
         }
         
 
@@ -480,25 +480,29 @@ unsigned char* EnviaArchivo(FILE* file,Direccion dir_envio,Direccion  dir_recibe
         if( code == ACK){
             //se recibe el ACK correspondiente con el numero de bloque
             printf("\nSe recibe ACK con bloque %d.",unchar_to_int(ObtenerBloque(paq_entrada)));
+            break;
         } else if (code == ERROR){
             //se recibe un paquete de ERROR, por lo tanto,
             printf("\nSe Recibio un paquete de error.");
+            break;
         } else{
             //en el caso de un paquete desconocido
             printf("\nSe recibio un paquete desconocido.");
+            break;
         }
 
-        if (paq_salida->longitud<512)
-        {
+        //cuando la cantidad de datos leidos del archivo sea menor a 512
+        //significa que ya se termino de leer el archivo, por lo tanto,
+        //se rompe el ciclo para terminar
+        if (cantidad<512){
             //se limpian los apuntadores para evitar traslape de datos
             free(paq_salida);
             free(paq_entrada);
             free(data);
+            printf("\nse termino de enviar el archivo\n");
             break;
         }
         
-        
-
         //se limpian los apuntadores para evitar traslape de datos
         free(paq_salida);
         free(paq_entrada);
@@ -547,7 +551,7 @@ unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_r
     //    |                                          |
     
     //numero bloque
-    unsigned char* bloque;
+    int bloque=0;
 
     //paquete que se envia
     TFTP_Struct paq_salida;
@@ -558,25 +562,40 @@ unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_r
     //paquete que se recibe
     TFTP_Struct paq_entrada;
 
+    //cantidad de bytes que se escribiran en el archivo
+
+    int cantidad=0;
+
     //codigo del paquete que se recibe
     int code=0;
 
     while (1){
-        //se recibe un paquete tipo DATA
+        //se qued en espera de un paquete tipo DATA
         paq_entrada=recibir(dir_recibe); 
+        cantidad=(paq_entrada->longitud)-4;
+        //MostrarTFTP_Struct(paq_entrada);
         code=unchar_to_int(ObtenerCodigoOp(paq_entrada));
-        bloque=ObtenerBloque(paq_entrada);
+        bloque=unchar_to_int(ObtenerBloque(paq_entrada));
+        printf("\nSe recibe bloque:%d,tam_data:%d",bloque,cantidad);
         if( code == DATA){
             //se recibe el DATA correspondiente con el numero de bloque
             //se extraen los datos
             data=ObtenerDatos(paq_entrada);
-            //se debe de escribir en el archivo--pendiente
-            printf("dato:%s",data);
-            printf("Data:%hhn = %s",bloque,data);
+
+            printf("data: %s",data);
+
+            //se debe de escribir en el archivo
+            cantidad=fwrite(data,1,cantidad,file);
+            printf("\ncantidad escritos:%d",cantidad);
+            
             //Se arma el ACK respetivo al numero de bloque y se envia
-            paq_salida=Struct_ACK(bloque);
-            enviar(dir_envio,paq_salida);
-            if (paq_entrada->longitud<512){
+            paq_salida=Struct_ACK(int_to_unchar(bloque));
+
+            if(enviar(dir_envio,paq_salida)==-1){
+                printf("Error Al enviar archivo");
+            }
+
+            if (cantidad<512){
                 free(paq_salida);
                 free(paq_entrada);
                 free(data);
@@ -586,9 +605,11 @@ unsigned char* RecibiendoArchivo(FILE* file,Direccion dir_envio,Direccion  dir_r
         } else if (code == ERROR){
             //se recibe un paquete de ERROR, por lo tanto,
             printf("\nSe Recibio un paquete de error.");
+            break;
         } else{
             //en el caso de un paquete desconocido
             printf("\nSe recibio un paquete desconocido.");
+            break;
         }
 
         free(paq_salida);

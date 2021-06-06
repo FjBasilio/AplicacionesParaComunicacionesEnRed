@@ -230,11 +230,10 @@ TFTP_Struct recibir(Direccion direc){
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
     int len_dir=sizeof(dir_temp);
-    
-    
+    //MSG_DONTWAIT
     int lrecv=recvfrom(socket,paq_recv, 516,0,(struct sockaddr *)&dir_temp,&len_dir);
     if(lrecv==-1){
-        printf("\nError al recibir.\n");
+        perror("\nError al recibir.\n");
         return NULL;
     }
     else{
@@ -256,11 +255,11 @@ int enviar(Direccion direc,TFTP_Struct paq){
 
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
-    
+    //MSG_DONTWAIT
     int tam=sendto(socket,paq->peticion,paq->longitud,0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
     
     if(tam==-1){
-        printf("\nError en enviar.\n");
+        //perror("\nError en enviar.\n");
         return -1;
     }
     else{
