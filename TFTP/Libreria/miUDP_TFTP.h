@@ -108,7 +108,7 @@ TFTP_Struct Struct_WRQ(unsigned char *name_file){
 //    ----------------------------------
 //   | Opcode |   Block #  |   Data     |
 //    ----------------------------------
-TFTP_Struct Struct_DATA(unsigned char * num_block,unsigned char *data){
+TFTP_Struct Struct_DATA(unsigned char * num_block,unsigned char *data,int tam_data){
     unsigned char paq[516];
     
     unsigned char code[2]={0x00,0x03};
@@ -117,8 +117,8 @@ TFTP_Struct Struct_DATA(unsigned char * num_block,unsigned char *data){
     ptr=ptr+2;
     memcpy(paq+ptr,num_block,2);
     ptr=ptr+2;
-    memcpy(paq+ptr,data,strlen((char*)data));
-    ptr=ptr+strlen((char*)data);
+    memcpy(paq+ptr,data,tam_data);
+    ptr=ptr+tam_data;
     
     return NuevoStructTFTP(paq,ptr);
 }

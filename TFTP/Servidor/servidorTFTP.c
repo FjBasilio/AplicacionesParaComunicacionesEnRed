@@ -35,7 +35,7 @@ int Trabajando(Direccion dir_envio,Direccion  dir_recibe){
     //mandar mensaje de error(ya sea que no exista o un error distinto)
     
     while(1){
-        printf("\nServidor Listo,Esperando paquetes.\n");
+        printf("\nServidor Listo,Esperando peticiones.\n");
         //El paquete estara en memoria dinamica
         paquete=EsperandoPeticiones(dir_recibe);
 
