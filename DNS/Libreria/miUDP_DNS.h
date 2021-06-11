@@ -7,6 +7,17 @@
 #include <netinet/in.h>
 #include <netinet/ip.h> /* superset of previous */
 #include <arpa/inet.h>
+//estructura que contendra el formato de las solicitudes y actualizaciones de DNS
+typedef struct struct_dns{
+    unsigned char* array_dns; //arreglo asociada a la estructura
+    int longitud_array;
+}*DNS;
+
+//crea una estructura DNS vacia
+DNS NuevoDNS(){
+    DNS dns=(DNS)malloc(sizeof(struct struct_dns));
+    return dns;
+}
 
 //Estructura que se mandara al los hilos, ya que solo aceptan un parametro
 typedef struct datos_dir{
@@ -75,7 +86,7 @@ int crearBind(int socket,struct sockaddr_in *dir){
 // el socked y la direccion ip del origen, 
 // regresa el paquete recibido
 // si hay un error regresa -1 en unsigned
-unsigned char* recibir(Direccion direc){
+DNS recibir(Direccion direc){
     unsigned char msj_recv[512];  //512 por defecto
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
@@ -85,15 +96,20 @@ unsigned char* recibir(Direccion direc){
     int lrecv=recvfrom(socket,msj_recv, 512,0,(struct sockaddr *)&dir_temp,&len_dir);
     if(lrecv==-1){
         printf("\nError al recibir.\n");
-        return "-1";
+        return NULL;
     }
     else{
         //Almacenamiento del mensaje para regreasarlo 
         unsigned char* paquete=(unsigned char*)malloc(lrecv);
-        
         *(direc->dir)=dir_temp; // esto es necesario para el servidor, debe de obtener los tatos del remitente
         memcpy(paquete,msj_recv,lrecv); //si se usa printf no funciona bien
-        return paquete;
+
+        DNS dns=NuevoDNS();
+
+        dns->array_dns=paquete;
+        dns->longitud_array=lrecv;
+        
+        return dns;
     }
     
 }
@@ -103,7 +119,7 @@ unsigned char* recibir(Direccion direc){
 // socket, el mensaje y la direccion ip a la que se envia
 // regresa 0 si tuvo exito
 // si hay un error regresa -1
-int enviar(Direccion direc,unsigned char* msj){
+int enviar(Direccion direc,DNS dns){
 
     struct sockaddr_in dir_temp=*(direc->dir);
     int socket=direc->udp_socket;
@@ -113,7 +129,7 @@ int enviar(Direccion direc,unsigned char* msj){
     //printf("\nip:%s",inet_ntoa(dir_temp.sin_addr));
 
 
-    int tam=sendto(socket,msj,strlen(msj),0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
+    int tam=sendto(socket,dns->array_dns,dns->longitud_array,0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
     if(tam==-1){
         printf("\nError en enviar.\n");
         return -1;
