@@ -128,7 +128,7 @@ int enviar(Direccion direc,DNS dns){
     //printf("\npuerto salida:%d",ntohs(dir_temp.sin_port));
     //printf("\nip:%s",inet_ntoa(dir_temp.sin_addr));
 
-
+    //imprimeTrama(dns->array_dns,dns->longitud_array);
     int tam=sendto(socket,dns->array_dns,dns->longitud_array,0,(struct sockaddr *)&dir_temp,sizeof(dir_temp));
     if(tam==-1){
         printf("\nError en enviar.\n");

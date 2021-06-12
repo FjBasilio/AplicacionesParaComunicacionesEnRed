@@ -122,10 +122,10 @@ DNS solicitudDNS(unsigned char id,unsigned char* nombre,unsigned char tipo,unsig
     ptr+=2;
 
     unsigned char* temp_dns=(unsigned char*)malloc(sizeof(unsigned char)*ptr);
-
+    memcpy(temp_dns,temp,ptr);
     dns->array_dns=temp_dns;
     dns->longitud_array=ptr;
-    imprimeTrama(dns->array_dns,dns->longitud_array);
+    //imprimeTrama(dns->array_dns,dns->longitud_array);
     return dns;
 }
 //cuando se recive una respuesta esta funcion se encarga de ilustrar los datos
@@ -262,10 +262,12 @@ unsigned char* formatoDNSNombre(unsigned char* nombre_dns){
 void imprimeTrama(unsigned char* trama,int tam){
 
     puts("\n");
-    for (int i = 0; i < tam; i++)
+    for (int i = 0; i < tam;)
     {
-        printf("\t%hhx",trama[i]);
-        if (tam%16==0);{
+        //printf("  %.2hx[%d]",trama[i],trama[i]);
+        printf("  %.2hx",trama[i]);
+        i++;
+        if (i%16==0){
             puts("\n");
         }
         
