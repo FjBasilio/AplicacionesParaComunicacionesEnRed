@@ -11,7 +11,7 @@ int main(){
     Direccion dir_recibe=(Direccion)malloc(sizeof(struct datos_dir));
     
     struct sockaddr_in *local_cliente=crearLocal(0);
-    struct sockaddr_in *remota=crearRemota(53,"192.168.1.118");
+    struct sockaddr_in *remota=crearRemota(53,"8.8.8.8");
     
     int lbind=crearBind(udp_socket,local_cliente);
     
