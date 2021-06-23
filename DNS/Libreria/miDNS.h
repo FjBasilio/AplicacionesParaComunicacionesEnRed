@@ -41,7 +41,7 @@ int enviarSolicitud(unsigned char* nombre_dominio,Direccion dir_envio,Direccion 
         }else{
             printf("\nSe envio solicitud");
         }
-    
+
     DNS dns_res=recibir(dir_recibe);
     if (dns_res==NULL){
             perror("Error al recibir respuesta");
@@ -129,7 +129,7 @@ DNS solicitudDNS(unsigned char id,unsigned char* nombre,unsigned char tipo,unsig
     //ENCABEZADO DNS
     printf("\n****************Solicitud DNS****************\n");
     printf("\n----------------Encabezado DNS----------------\n");
-    printf("\n\tId de transaccion:%.4hx %.4hx", ID_Transaccion[0],ID_Transaccion[1]);
+    printf("\n\tId de transaccion:%.2hx %.2hx", ID_Transaccion[0],ID_Transaccion[1]);
     printf("\n\tIndicadores:%d %d",Indicadores[0],Indicadores[1]);
     printf("\n\tContador RR de peticiones:%d ",unchar_to_int(Cont_Peticiones));
     printf("\n\tContador RR de respuestas:%d",unchar_to_int(Cont_RR_Respuestas));
@@ -175,7 +175,7 @@ int actualizacionDNS(DNS dns){
 
     unsigned char cero[]={0x00};
     unsigned char* temp=dns->array_dns;
-    int ptr=dns->longitud_array;
+    int ptr=0;
 
     memcpy(ID_Transaccion,temp+ptr,2);
     ptr+=2;
@@ -190,24 +190,33 @@ int actualizacionDNS(DNS dns){
     memcpy(Cont_RR_Adicionales,temp+ptr,2);
     ptr+=2;
 
+    printf("\n ptr=%d",ptr);
     int i=0;
-    //para leer el nombre DNS
+    //para leer el nombre DNS (hay un descuadre)
     while(temp[ptr]!=0x00){
-        Nombre_Peticion[i++]=temp[ptr];
+        
+        Nombre_Peticion[i]=temp[ptr];
+        printf("\n%d=>%c  ptr=%d",i,Nombre_Peticion[i],ptr);
+        i++;
         ptr+=1;
     }
-
+    imprimeTrama(temp,ptr);
+    ptr+=1;//se incrementa para saltar el 0x00 NULL
+    printf("\ntemp=>%.2hx  ptr=%d",temp[ptr],ptr);
     memcpy(Tipo_Peticion,temp+ptr,2);
     ptr+=2;
     memcpy(Clase_Peticion,temp+ptr,2);
     ptr+=2;
 
     i=0;
-    //para leer el nombre DNS
+    //para leer el nombre DNS (hay un descuadre)
     while(temp[ptr]!=0x00){
-        Nombre_RR[i++]=temp[ptr];
+        Nombre_RR[i]=temp[ptr];
+        //printf("\n%d=>%c  ptr=%d",i,Nombre_Peticion[i],ptr);
+        i++;
         ptr+=1;
     }
+    ptr+=1;//se incrementa para saltar el 0x00 NULL
 
     memcpy(Tipo_Registro,temp+ptr,2);
     ptr+=2;
@@ -227,7 +236,7 @@ int actualizacionDNS(DNS dns){
     //ENCABEZADO DNS
     printf("\n****************Actualizacion DNS****************\n");
     printf("\n------------------Encabezado DNS----------------\n");
-    printf("\n\tId de transaccion:%.4hx %.4hx", ID_Transaccion[0],ID_Transaccion[1]);
+    printf("\n\tId de transaccion:%.2hx %.2hx", ID_Transaccion[0],ID_Transaccion[1]);
     printf("\n\tIndicadores:%d %d",Indicadores[0],Indicadores[1]);
     printf("\n\tContador RR de peticiones:%d ",unchar_to_int(Cont_Peticiones));
     printf("\n\tContador RR de respuestas:%d",unchar_to_int(Cont_RR_Respuestas));
@@ -239,7 +248,9 @@ int actualizacionDNS(DNS dns){
     printf("\n\tNombre de peticion:%s ",formatoDNSNombre(Nombre_Peticion));
     printf("\n\tTipo de peticion:%d ",unchar_to_int(Tipo_Peticion));
     printf("\n\tClase de peticion:%d ",unchar_to_int(Clase_Peticion));
-
+    
+    imprimeTrama(dns->array_dns,dns->longitud_array);
+    return 0;
     // Estructura de Recursos RR 
     printf("\n-------------Estructura de Recursos RR-----------\n");
     printf("\n\tNombre de RR:%s ",formatoDNSNombre(Nombre_RR));
@@ -247,7 +258,7 @@ int actualizacionDNS(DNS dns){
     printf("\n\tClase de Registro:%d ",unchar_to_int(Clase_Registro));
     printf("\n\tTiempo de respuesta: %d:%d:%d:%d Seg. ",RR_TTL[0],RR_TTL[1],RR_TTL[2],RR_TTL[3]);
     printf("\n\tTamaño de los Datos RR:%d ",unchar_to_int(Tam_Datos_RR));
-    printf("\n\tDatos_RR:%s ",unchar_to_int(Datos_RR));
+    printf("\n\tDatos_RR:%d ",unchar_to_int(Datos_RR));
 
     printf("\n**************Fin actualizacion DNS**************\n");
 
@@ -291,24 +302,30 @@ unsigned char* formatoDNSNombre(unsigned char* nombre_dns){
     unsigned char nombre_temp[512];
     for (int i = 0; i < 512; i++){nombre_temp[i]=0x00;}
 
-    int num,i,j=0;
+    int num,i,j=0,indice=0;
     while(1){
 
         num=(int)nombre_dns[j++];
+        //printf("\n num:%d",num);
         i = 0;
         while(i < num){
-            nombre_temp[i]=nombre_dns[j++];
-            printf("%c",nombre_temp[i++]);
+            nombre_temp[indice+i]=nombre_dns[j];
+            //printf("\nnombre_temp[%d]=%c ,indice: %d, i:%d, j:%d",indice+i,nombre_temp[indice+i],indice,i,j);
+            i++;
+            j++;
         }
-        if(nombre_dns[j]==0x00)break;
-
-        nombre_temp[i]='.';
-        printf("%c",nombre_temp[i]);
+        indice+=i;
+        if(nombre_dns[j]==0x00){break;}
+        
+        nombre_temp[indice]=(unsigned char)'.';
+        //printf("\nnombre_temp[%d]=%c ,indice: %d, i:%d, j:%d",indice,nombre_temp[indice],indice,i,j);
+        indice++;
+        i++;
+        
 
     }
-    printf(" Num:%d\n",j);
     unsigned char* form_nombre=(unsigned char*)malloc(sizeof(unsigned char)*j);
-    for (int i = 0; i < j;i++)printf("%.2hx",nombre_temp[i]);
+    
     return memcpy(form_nombre,nombre_temp,j);
 }
 //imprime las tramas tanto de las solicitudes o las actualizaciones
