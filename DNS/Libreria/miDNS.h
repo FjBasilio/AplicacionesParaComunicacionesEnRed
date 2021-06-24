@@ -29,6 +29,7 @@ unsigned char* formatoDNSNombre(unsigned char* nombre_dns);
 void imprimeTrama(unsigned char* trama,int tam);
 unsigned char* int_to_unchar(int int_num);
 int unchar_to_int(unsigned char* unchar_num);
+int* toBinary(int num);
 
 //Envia una solicitud y espera a recibir una respuesta
 int enviarSolicitud(unsigned char* nombre_dominio,Direccion dir_envio,Direccion dir_recibe){
@@ -131,6 +132,21 @@ DNS solicitudDNS(unsigned char id,unsigned char* nombre,unsigned char tipo,unsig
     printf("\n----------------Encabezado DNS----------------\n");
     printf("\n\tId de transaccion:%.2hx %.2hx", ID_Transaccion[0],ID_Transaccion[1]);
     printf("\n\tIndicadores:%d %d",Indicadores[0],Indicadores[1]);
+    int ind_1=0,ind_2=0;
+    unsigned char aux[]={0x00,Indicadores[0]};
+    unsigned char aux2[]={0x00,Indicadores[1]};
+    ind_1=unchar_to_int(aux);
+    ind_2=unchar_to_int(aux2);
+    int *n1=toBinary(ind_1);
+    int *n2=toBinary(ind_2);
+    printf("\n\t\tSolicitud/respuesta:%d",n1[7]);
+    printf("\n\t\tCodigo de operacion:%d %d %d %d",n1[6],n1[5],n1[4],n1[3]);
+    printf("\n\t\tRespuesta de autoridad:%d",n1[2]);
+    printf("\n\t\tTruncado:%d",n1[1]);
+    printf("\n\t\tDeseo de Recursion:%d",n1[0]);
+    printf("\n\t\tRecursion Disponible:%d",n2[7]);
+    printf("\n\t\tReservado:%d %d %d",n2[6],n2[5],n2[4]);
+    printf("\n\t\tCodigo de retorno:%d %d %d %d",n2[3],n2[2],n2[1],n2[0]);
     printf("\n\tContador RR de peticiones:%d ",unchar_to_int(Cont_Peticiones));
     printf("\n\tContador RR de respuestas:%d",unchar_to_int(Cont_RR_Respuestas));
     printf("\n\tContador RR de autoridad:%d ",unchar_to_int(Cont_RR_Autoridad));
@@ -179,28 +195,49 @@ int actualizacionDNS(DNS dns){
 
     //ENCABEZADO DNS
     memcpy(ID_Transaccion,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n****************Actualizacion DNS****************\n");
     printf("\n------------------Encabezado DNS----------------\n");
     printf("\n\tId de transaccion:%.2hx %.2hx", ID_Transaccion[0],ID_Transaccion[1]);
 
     memcpy(Indicadores,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tIndicadores:%d %d",Indicadores[0],Indicadores[1]);
+    int ind_1=0,ind_2=0;
+    unsigned char aux[]={0x00,Indicadores[0]};
+    unsigned char aux2[]={0x00,Indicadores[1]};
+    ind_1=unchar_to_int(aux);
+    ind_2=unchar_to_int(aux2);
+    int *n1=toBinary(ind_1);
+    int *n2=toBinary(ind_2);
+    printf("\n\t\tSolicitud/respuesta:%d",n1[7]);
+    printf("\n\t\tCodigo de operacion:%d %d %d %d",n1[6],n1[5],n1[4],n1[3]);
+    printf("\n\t\tRespuesta de autoridad:%d",n1[2]);
+    printf("\n\t\tTruncado:%d",n1[1]);
+    printf("\n\t\tDeseo de Recursion:%d",n1[0]);
+    printf("\n\t\tRecursion Disponible:%d",n2[7]);
+    printf("\n\t\tReservado:%d %d %d",n2[6],n2[5],n2[4]);
+    printf("\n\t\tCodigo de retorno:%d %d %d %d",n2[3],n2[2],n2[1],n2[0]);
 
     memcpy(Cont_Peticiones,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tContador RR de peticiones:%d ",unchar_to_int(Cont_Peticiones));
     
     memcpy(Cont_RR_Respuestas,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tContador RR de respuestas:%d",unchar_to_int(Cont_RR_Respuestas));
     
     memcpy(Cont_RR_Autoridad,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tContador RR de autoridad:%d ",unchar_to_int(Cont_RR_Autoridad));
     
     memcpy(Cont_RR_Adicionales,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tContador RR de adicionales:%d ",unchar_to_int(Cont_RR_Adicionales));
 
@@ -214,43 +251,49 @@ int actualizacionDNS(DNS dns){
     //ENTRADA DE SOLICITUD
     printf("\n---------------Entrada de solicitud-------------\n");
     printf("\n\tNombre de peticion:%s ",formatoDNSNombre(Nombre_Peticion));
-
+    printf("\nptr=%d",ptr);
     ptr+=1;//se incrementa para saltar el 0x00 NULL
     //printf("\ntemp=>%.2hx  ptr=%d",temp[ptr],ptr);
     memcpy(Tipo_Peticion,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tTipo de peticion:%d ",unchar_to_int(Tipo_Peticion));
     
     memcpy(Clase_Peticion,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tClase de peticion:%d ",unchar_to_int(Clase_Peticion));
-
-    //nos saltamos el apuntador
+    printf("\nptr=%d",ptr);
     ptr+=2;
     // Estructura de Recursos RR 
     printf("\n-------------Estructura de Recursos RR-----------\n");
     printf("\n\tNombre de RR:%s ",formatoDNSNombre(Nombre_Peticion));
 
     memcpy(Tipo_Registro,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tTipo de Registro:%d ",unchar_to_int(Tipo_Registro));
 
     memcpy(Clase_Registro,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tClase de Registro:%d ",unchar_to_int(Clase_Registro));
-    //printf("\nptr=%d",ptr);
+    
     memcpy(RR_TTL,temp+ptr,4);
+    printf("\nptr=%d",ptr);
     ptr+=4;
     printf("\n\tTiempo de respuesta: %d:%d:%d:%d Seg. ",RR_TTL[0],RR_TTL[1],RR_TTL[2],RR_TTL[3]);
 
     memcpy(Tam_Datos_RR,temp+ptr,2);
+    printf("\nptr=%d",ptr);
     ptr+=2;
     printf("\n\tTamaño de los Datos RR:%d ",unchar_to_int(Tam_Datos_RR));
 
     int tamdatos=unchar_to_int(Tam_Datos_RR);
 
-    for (size_t i = 0; i < tamdatos; i++){
+    for (int i = 0; i < tamdatos; i++){
         Datos_RR[i++]=temp[ptr];
+        printf("\nDatos_RR[%d]=%.2hx  ptr=%d",i,Datos_RR[i],ptr++);
         ptr+=1;
     }
     printf("\n\tDatos_RR:%d.%d.%d.%d ",Datos_RR[0],Datos_RR[1],Datos_RR[2],Datos_RR[3]);
@@ -326,8 +369,8 @@ void imprimeTrama(unsigned char* trama,int tam){
     puts("\n");
     for (int i = 0; i < tam;)
     {
-        //printf("  %.2hx[%d]",trama[i],i);
-        printf("  %.2hx",trama[i]);
+        printf("  %.2hx[%d]",trama[i],i);
+        //printf("  %.2hx",trama[i]);
         i++;
         if (i%16==0){
             puts("\n");
@@ -359,3 +402,13 @@ int unchar_to_int(unsigned char* unchar_num){
     return n;
 }
 
+int* toBinary(int num){
+    int* B=(int*)malloc(sizeof(int)*8);
+    for(int i = 0; i < 8; i++){B[i]=0;}
+
+    for(int i = 0; i < 8; i++){
+        B[i]=num%2;
+        num=num/2;
+    }
+    return B;
+}
