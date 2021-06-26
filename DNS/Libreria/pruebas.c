@@ -3,7 +3,15 @@
 void nombre_formato_dns();
 
 int main(){
-
+    unsigned char num[]={0x01,0x01};
+    int* bits=toBinary(num);
+    for (int i = 0; i < 16; i++)
+    {
+        printf("%d",bits[i]);
+    }
+    
+    unsigned char* num2=toInt(bits);
+    printf("\n%.2hx %.2hx",num2[0],num2[1]);
     
     return 0;
 }
