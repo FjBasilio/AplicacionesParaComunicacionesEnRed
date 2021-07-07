@@ -263,10 +263,15 @@ int actualizacionDNS(DNS dns){
         num_saltos=0;
         //printf("\nptr=%d",ptr);
         if(tamdatos==4){
-            memcpy(IP4,temp+ptr,4);ptr+=4;
+            memcpy(IP4,temp+ptr,4);ptr+=tamdatos;
             printf("\n\tDatos RR:%d.%d.%d.%d ",IP4[0],IP4[1],IP4[2],IP4[3]);
-        }else{
-            Datos_RR=ArmaDominios(temp,ptr,&num_saltos);ptr+=num_saltos;
+        }else if(tamdatos==16){
+            memcpy(IP4,temp+ptr,16);ptr+=tamdatos;
+            printf("\n\tDatos RR:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx",
+            IP4[0],IP4[1],IP4[2],IP4[3],IP4[4],IP4[5],IP4[6],IP4[7],IP4[8],IP4[9],IP4[10],IP4[11],IP4[12],IP4[13],IP4[14],IP4[15]);
+        }
+        else{
+            Datos_RR=ArmaDominios(temp,ptr,&num_saltos);ptr+=tamdatos;
             printf("\n\tDatos RR:%s ",TramaToNombre(Datos_RR));
         }
 
@@ -339,8 +344,8 @@ void imprimeTrama(unsigned char* trama,int tam){
     puts("\n");
     for (int i = 0; i < tam;)
     {
-        //printf("  %.2hx[%d]",trama[i],i);
-        printf("  %.2hx",trama[i]);
+        printf("  %.2hx[%d]",trama[i],i);
+        //printf("  %.2hx",trama[i]);
         i++;
         if (i%16==0){
             puts("\n");
@@ -433,7 +438,7 @@ unsigned char* ArmaDominios(unsigned char* trama,int ptr,int* num_saltos){
     unsigned char* nombre_temp=(unsigned char*)malloc(sizeof(unsigned char)*1);
     *nombre_temp=0x00;
     unsigned char Apuntador[]={0x00,0x00};
-    unsigned char* aux;
+    unsigned char *aux,*aux2;
     //for (int i = 0; i < 512; i++){nombre_temp[i]=0x00;}
     int ptr_aux,num_saltos_aux,i=0;
 
@@ -448,8 +453,7 @@ unsigned char* ArmaDominios(unsigned char* trama,int ptr,int* num_saltos){
             aux=ArmaDominios(trama,ptr_aux,num_saltos);
             //printf("\nUn regreso");
             //saltamos el apuntador y el null, sobreescribiendo los saltos
-            *num_saltos=2; 
-            //printf("\nUn regreso,saltos=%d",*num_saltos);
+            *num_saltos=2;
             return aux;
 
         }else{ 

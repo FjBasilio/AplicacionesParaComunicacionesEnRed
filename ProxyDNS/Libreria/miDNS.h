@@ -42,7 +42,7 @@ unsigned char* ArmaDominios(unsigned char* trama,int ptr,int* num_saltos);
 //Esta funcion es para EL SERVIDOR
 DNS EsperandoSolicitudes(Direccion direc){
     DNS dns;
-    printf("\nEsperando Solicitudes");
+    
     while(1){
         //regresara un paquete en memoria dinamica
         dns=recibir(direc);
@@ -54,7 +54,7 @@ DNS EsperandoSolicitudes(Direccion direc){
 //-----------Envia una solicitud y espera a recibir una respuesta--------------
 DNS EnviarSolicitud(unsigned char* nombre_dominio,Direccion dir_envio,Direccion dir_recibe){
     
-    printf("\nEnviando solicitud");
+    
     //se envia el DNS solicitud
     DNS dns_sol=CrearSolicitudDNS(0x09,nombre_dominio,0x01,0x01);
     if (enviar(dir_envio,dns_sol)==-1){
@@ -63,6 +63,7 @@ DNS EnviarSolicitud(unsigned char* nombre_dominio,Direccion dir_envio,Direccion 
         }else{
             printf("\nSe envio solicitud");
         }
+    printf("\nEsperando actualizacion");
     //como se tuvo exito en el envio se espera la actualizacion DNS
     DNS dns_res=recibir(dir_recibe);
     if (dns_res==NULL){
@@ -105,7 +106,6 @@ unsigned char* UsuarioSolicitudDNS(DNS dns){
     memcpy(Cont_RR_Adicionales,temp+ptr,2);ptr+=2;
 
     Nombre_Peticion=ArmaDominios(temp,ptr,&num_saltos);ptr+=num_saltos;
-    memcpy(cero,temp+ptr,1);ptr+=1;//para identificar el fin del nombre de dominio
     memcpy(Tipo_Peticion,temp+ptr,2);ptr+=2;
     memcpy(Clase_Peticion,temp+ptr,2);ptr+=2;
     
@@ -344,10 +344,15 @@ unsigned char* AnalizandoActualizacionDNS(DNS dns){
         num_saltos=0;
         //printf("\nptr=%d",ptr);
         if(tamdatos==4){
-            memcpy(IP4,temp+ptr,4);ptr+=4;
+            memcpy(IP4,temp+ptr,4);ptr+=tamdatos;
             printf("\n\tDatos RR:%d.%d.%d.%d ",IP4[0],IP4[1],IP4[2],IP4[3]);
-        }else{
-            Datos_RR=ArmaDominios(temp,ptr,&num_saltos);ptr+=num_saltos;
+        }else if(tamdatos==16){
+            memcpy(IP4,temp+ptr,16);ptr+=tamdatos;
+            printf("\n\tDatos RR:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx:%.2hx%.2hx",
+            IP4[0],IP4[1],IP4[2],IP4[3],IP4[4],IP4[5],IP4[6],IP4[7],IP4[8],IP4[9],IP4[10],IP4[11],IP4[12],IP4[13],IP4[14],IP4[15]);
+        }
+        else{
+            Datos_RR=ArmaDominios(temp,ptr,&num_saltos);ptr+=tamdatos;
             printf("\n\tDatos RR:%s ",TramaToNombre(Datos_RR));
         }
 

@@ -2,7 +2,6 @@
 #include "./Libreria/miDNS.h"
 
 int ServidorProxyDNS();
-
 DNS ClienteProxyDNS(DNS dns_sol);
 
 
@@ -34,8 +33,9 @@ int ServidorProxyDNS(){
     DNS dns_sol,dns_res;
     while (1){   
         //socket donde se recibiran las solicitudes
+        printf("\nEsperando Solicitudes");
         dns_sol=EsperandoSolicitudes(dir_recibe);
-        printf("\nSolicitud por Proxy");
+        printf("\nSolicitud pRecibida");
         dns_res=ClienteProxyDNS(dns_sol);
         if (enviar(dir_envio,dns_sol)==-1){
             perror("\nError al enviar actualizacion al cliente\n");
@@ -93,14 +93,14 @@ DNS ClienteProxyDNS(DNS dns_sol){
     DNS dns_res=EnviarSolicitud(nombre_dns_usuario,dir_envio,dir_recibe);
 
     //se valida si el nombre de dominio solicitado por el susuario esta en la lista negra
-    for (int i = 0; i < strlen(*Lista_Negra); i++){
-
-        //en caso de encontrar el nombre de dominio en la lista negra
-        if(1){
-            printf("\nNombre de dominio solicitado:%s no valido",nombre_dns_usuario);
-            CrearActualizacionDNS(IP_sust,dns_sol);
-        }
-    }
+    // for (int i = 0; i < strlen(*Lista_Negra); i++){
+    //     //en caso de encontrar el nombre de dominio en la lista negra
+    //     if(1){
+    //         printf("\nNombre de dominio solicitado:%s no valido",nombre_dns_usuario);
+    //         CrearActualizacionDNS(IP_sust,dns_sol);
+    //     }
+    // }
+    close(udp_socket);
     //en caso de no encontrarlo en la lista negra se deja pasar la actualizacion DNS
     return dns_res;
     
