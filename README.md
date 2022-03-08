@@ -6,3 +6,4 @@ Usando Soquets crudos en C.
 
 - proxyDNS no terminado, TFTP al mandar o recibir un archivo se cierra el servidor o el cliente solo es volver a correrlo y funcionara normal, por lo tanto el resto funciona bien.
 - hecho !00% por mi. los comentarios lo avalan.
+- lamentablemente ChatMejorado se daño pero a partir de Chat es suficiente.
